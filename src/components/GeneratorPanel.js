@@ -175,11 +175,11 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
       case "instantmesh":
         return "CPU (Sistem RAM - ~16 GB) kullanır. 6 GB VRAM yetmediği için işlemciye (CPU) aktarılır; 5-8 dk sürer ama bilgisayarı çökertmeden yerelde temiz geometri üretir.";
       case "trellis":
-        return "Sisteminizde yerel çalıştırılamaz (En az 32 GB RAM ister). Bulut GPU sunucusu (A100 - 24 GB VRAM) üzerinden çalışır.";
+        return "Yerel işlemci (CPU) ve Sistem RAM'inizi kullanır. Çok ağır bir modeldir, 16 GB sistem RAM sınırınızı tamamen zorlar ve üretimi yerelde tamamlaması 10-15 dakika sürebilir.";
       case "hunyuan3d":
-        return "Sisteminizde yerel çalıştırılamaz (En az 32 GB RAM ister). Bulut GPU sunucusu üzerinden çalışır.";
+        return "Yerel işlemci (CPU) ve Sistem RAM'inizi kullanır. Ağırlıkları çok büyüktür, yerelde RAM yetmezliği nedeniyle yavaşlama veya donma riski taşır.";
       case "unique3d":
-        return "Yerel CPU modunda aşırı yavaş çalışır. Bulut GPU üzerinden çalıştırılması önerilir.";
+        return "Yerel işlemci (CPU) ve Sistem RAM'inizi kullanır. Detaylı yapısı nedeniyle yerel CPU modunda üretimi 15 dakikaya kadar sürebilir.";
       case "one2345":
         return "CPU (Sistem RAM - ~12 GB) modunda çalışabilir. 3D yazıcı odaklı geometri çıkartır.";
       default:
