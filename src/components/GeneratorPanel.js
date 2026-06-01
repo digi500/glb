@@ -124,10 +124,14 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
       texture_resolution: 1024
     },
     hunyuan3d: {
-      inference_steps: 30,
-      octree_resolution: 256,
-      target_face_number: 40000,
-      simplify_mesh: true
+      inference_steps: 100,
+      octree_resolution: 512,
+      target_face_number: 999100,
+      simplify_mesh: false,
+      seed: 1234,
+      randomize_seed: false,
+      guidance_scale: 14,
+      number_of_chunks: 100000
     },
     sf3d: {
       texture_resolution: 1024,
@@ -440,12 +444,29 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
         {key === "hunyuan3d" && (
           <>
             <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Seed:</span>
+              <input
+                type="number"
+                className={styles.engineConfigInput}
+                value={config.seed}
+                onChange={(e) => updateConfig(key, "seed", parseInt(e.target.value) || 1234)}
+              />
+            </div>
+            <div className={styles.engineConfigRow} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={config.randomize_seed}
+                onChange={(e) => updateConfig(key, "randomize_seed", e.target.checked)}
+              />
+              <span className={styles.engineConfigLabel}>Randomize Seed</span>
+            </div>
+            <div className={styles.engineConfigRow}>
               <span className={styles.engineConfigLabel}>İşlem Adımları (Steps):</span>
               <input
                 type="number"
                 className={styles.engineConfigInput}
                 value={config.inference_steps}
-                onChange={(e) => updateConfig(key, "inference_steps", parseInt(e.target.value) || 30)}
+                onChange={(e) => updateConfig(key, "inference_steps", parseInt(e.target.value) || 100)}
               />
             </div>
             <div className={styles.engineConfigRow}>
@@ -454,7 +475,26 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
                 type="number"
                 className={styles.engineConfigInput}
                 value={config.octree_resolution}
-                onChange={(e) => updateConfig(key, "octree_resolution", parseInt(e.target.value) || 256)}
+                onChange={(e) => updateConfig(key, "octree_resolution", parseInt(e.target.value) || 512)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Guidance Scale:</span>
+              <input
+                type="number"
+                step="0.5"
+                className={styles.engineConfigInput}
+                value={config.guidance_scale}
+                onChange={(e) => updateConfig(key, "guidance_scale", parseFloat(e.target.value) || 14.0)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Number of Chunks:</span>
+              <input
+                type="number"
+                className={styles.engineConfigInput}
+                value={config.number_of_chunks}
+                onChange={(e) => updateConfig(key, "number_of_chunks", parseInt(e.target.value) || 100000)}
               />
             </div>
             <div className={styles.engineConfigRow}>
@@ -463,7 +503,7 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
                 type="number"
                 className={styles.engineConfigInput}
                 value={config.target_face_number}
-                onChange={(e) => updateConfig(key, "target_face_number", parseInt(e.target.value) || 40000)}
+                onChange={(e) => updateConfig(key, "target_face_number", parseInt(e.target.value) || 999100)}
               />
             </div>
             <div className={styles.engineConfigRow} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
