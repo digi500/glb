@@ -100,6 +100,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setRemovedBgImage("");
     setGeneratedGlbUrl("");
     setCurrentStep(0);
+    onModelLoaded("", 0);
     
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -114,6 +115,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setGeneratedGlbUrl("");
     setSelectedExample(ex);
     setCurrentStep(0);
+    onModelLoaded("", 0);
   };
 
   // AŞAMA 1: Görsel Üretimi (Yazıdan Görsele)
@@ -123,6 +125,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setStatus("Yerel ekran kartınız görseli üretiyor...");
     setLogs("Stable Diffusion / ComfyUI çalıştırılıyor...");
     startProgress(8); // Görsel üretimi için tahmini 8 saniye
+    onModelLoaded("", 0);
 
     const localUrl = getLocalUrl();
 
@@ -269,6 +272,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
       setCurrentStep(2);
       setStatus("3D model oluşturuldu! Optimizasyona geçebilirsiniz.");
       stopProgress();
+      onModelLoaded(rawGlbUrlLocal, glbBlob.size);
 
       if (flowMode === "auto") {
         runGlbOptimization(glbBlob);
@@ -360,6 +364,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setStatus("");
     setLogs("");
     setProgress(0);
+    onModelLoaded("", 0);
   };
 
   return (
