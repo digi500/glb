@@ -33,7 +33,7 @@ export default function ThreeViewer({ src, fileSize }) {
             const geometry = object.geometry;
             if (geometry) {
               // Calculate triangles
-              if (geometry.index !== null) {
+              if (geometry.index) {
                 triangles += geometry.index.count / 3;
               } else if (geometry.attributes.position) {
                 triangles += geometry.attributes.position.count / 3;
@@ -60,6 +60,12 @@ export default function ThreeViewer({ src, fileSize }) {
     };
 
     viewer.addEventListener("load", handleLoad);
+    
+    // Race condition önleyici: Model zaten yüklüyse istatistikleri hemen hesapla
+    if (viewer.loaded) {
+      handleLoad();
+    }
+
     return () => {
       viewer.removeEventListener("load", handleLoad);
     };
