@@ -9,10 +9,12 @@ export default function ThreeViewer({ src, fileSize, referenceImage }) {
   const [isWireframe, setIsWireframe] = useState(false);
   const [isAutoRotate, setIsAutoRotate] = useState(true);
   const [isRefExpanded, setIsRefExpanded] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Clear stats when src changes
+  // Clear stats and show loading when src changes
   useEffect(() => {
     setStats({ triangles: 0, vertices: 0 });
+    setIsLoading(true);
   }, [src]);
 
   // Handle model load event
@@ -21,6 +23,7 @@ export default function ThreeViewer({ src, fileSize, referenceImage }) {
     if (!viewer) return;
 
     const handleLoad = () => {
+      setIsLoading(false);
       try {
         // Access model-viewer's internal Three.js scene using Symbol
         const symbols = Object.getOwnPropertySymbols(viewer);
@@ -164,6 +167,17 @@ export default function ThreeViewer({ src, fileSize, referenceImage }) {
         interaction-prompt="auto"
         alt="AI Generated 3D GLB Model"
       >
+        {/* Loading overlay */}
+        {isLoading && (
+          <div className={styles.previewPlaceholder} style={{ zIndex: 10, background: "rgba(10, 10, 18, 0.75)" }}>
+            <div className="spinner"></div>
+            <div style={{ color: "#ffffff", fontWeight: 500 }}>3D Sahneye Yükleniyor...</div>
+            <div style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginTop: "0.2rem" }}>
+              Doku ve poligonlar işleniyor (Boyut: {formatBytes(fileSize)})
+            </div>
+          </div>
+        )}
+
         {/* Toolbar */}
         <div className={styles.viewerToolbar}>
           <button

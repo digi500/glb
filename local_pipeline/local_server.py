@@ -20,6 +20,15 @@ OUTPUT_DIR = BASE_DIR / "output"
 INPUT_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR.mkdir(exist_ok=True)
 
+def get_blender_path():
+    blender_path = "C:\\Program Files\\Blender Foundation\\Blender 4.0\\blender.exe"
+    # Eğer Blender farklı bir sürümse diğer yolları da tara
+    for ver in ["4.1", "4.2", "3.6"]:
+        alt_path = f"C:\\Program Files\\Blender Foundation\\Blender {ver}\\blender.exe"
+        if os.path.exists(alt_path) and not os.path.exists(blender_path):
+            blender_path = alt_path
+    return blender_path
+
 # Gerekli kütüphanelerin yerel kontrolü
 try:
     from PIL import Image
@@ -250,6 +259,7 @@ def generate_3d():
                     else:
                         texture_resolution = 1024
 
+                save_format = "obj" if bake_texture else "glb"
                 cmd = [
                     sys.executable,
                     str(triposr_script),
@@ -257,7 +267,7 @@ def generate_3d():
                     "--output-dir",
                     str(OUTPUT_DIR),
                     "--model-save-format",
-                    "glb",
+                    save_format,
                     "--no-remove-bg",
                     "--mc-resolution",
                     str(mc_resolution)
@@ -285,21 +295,68 @@ def generate_3d():
                             "--no-remove-bg"
                         ]
                         subprocess.run(cmd_fallback, check=True)
+                        bake_texture = False
                     else:
                         raise e
                 
-                # TripoSR çıktıları output-dir altında '0' klasörüne kaydeder (örn: output/0/mesh.glb)
-                generated_glb = OUTPUT_DIR / "0" / "mesh.glb"
-                if generated_glb.exists():
-                    import shutil
-                    shutil.move(str(generated_glb), str(glb_path))
-                    # Geçici '0' alt klasörünü temizleyelim
-                    shutil.rmtree(str(OUTPUT_DIR / "0"), ignore_errors=True)
+                # TripoSR çıktıları output-dir altında '0' klasörüne kaydeder (örn: output/0/mesh.glb veya mesh.obj)
+                if bake_texture:
+                    generated_obj = OUTPUT_DIR / "0" / f"mesh.{save_format}"
+                    generated_tex = OUTPUT_DIR / "0" / "texture.png"
+                    if generated_obj.exists() and generated_tex.exists():
+                        print("[*] xatlas OBJ ve texture.png tespit edildi, Blender ile GLB'ye dönüştürülüyor...")
+                        # Run Blender script to convert obj + texture to glb
+                        blender_path = get_blender_path()
+                        blender_convert_script = f"""
+import bpy
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+try:
+    bpy.ops.wm.obj_import(filepath=r"{generated_obj}")
+except AttributeError:
+    bpy.ops.import_scene.obj(filepath=r"{generated_obj}")
+imported_objs = [obj for obj in bpy.context.scene.objects if obj.type == 'MESH']
+if imported_objs:
+    mesh_obj = imported_objs[0]
+    bpy.context.view_layer.objects.active = mesh_obj
+    mat = bpy.data.materials.new(name="TextureMaterial")
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    bsdf = next(n for n in nodes if n.type == 'BSDF_PRINCIPLED')
+    tex_node = nodes.new('ShaderNodeTexImage')
+    tex_node.image = bpy.data.images.load(r"{generated_tex}")
+    links.new(tex_node.outputs['Color'], bsdf.inputs['Base Color'])
+    if mesh_obj.data.materials:
+        mesh_obj.data.materials[0] = mat
+    else:
+        mesh_obj.data.materials.append(mat)
+bpy.ops.export_scene.gltf(
+    filepath=r"{glb_path}",
+    export_format='GLB',
+    export_image_format='AUTO',
+    export_normals=True
+)
+"""
+                        temp_script = OUTPUT_DIR / f"convert_{uuid.uuid4()}.py"
+                        with open(temp_script, "w", encoding="utf-8") as f:
+                            f.write(blender_convert_script)
+                        
+                        blender_cmd = [blender_path, "--background", "--python", str(temp_script)]
+                        subprocess.run(blender_cmd, check=True)
+                        
+                        if temp_script.exists():
+                            os.remove(temp_script)
+                        import shutil
+                        shutil.rmtree(str(OUTPUT_DIR / "0"), ignore_errors=True)
+                    else:
+                        return jsonify({"error": "Doku kaplama çıktısı 'mesh.obj' veya 'texture.png' bulunamadı."}), 500
                 else:
-                    # Alternatif olarak obj oluşturduysa kontrol et
-                    generated_obj = OUTPUT_DIR / "0" / "mesh.obj"
-                    if generated_obj.exists():
-                        return jsonify({"error": "TripoSR modeli beklenmeyen bir şekilde GLB yerine OBJ oluşturdu."}), 500
+                    generated_glb = OUTPUT_DIR / "0" / "mesh.glb"
+                    if generated_glb.exists():
+                        import shutil
+                        shutil.move(str(generated_glb), str(glb_path))
+                        shutil.rmtree(str(OUTPUT_DIR / "0"), ignore_errors=True)
                     else:
                         return jsonify({"error": "TripoSR çıktısı 'mesh.glb' bulunamadı."}), 500
             else:
@@ -351,12 +408,7 @@ def optimize_glb():
         output_path = OUTPUT_DIR / output_filename
 
         # Blender Yolunu Al
-        blender_path = "C:\\Program Files\\Blender Foundation\\Blender 4.0\\blender.exe"
-        # Eğer Blender farklı bir sürümse diğer yolları da tara
-        for ver in ["4.1", "4.2", "3.6"]:
-            alt_path = f"C:\\Program Files\\Blender Foundation\\Blender {ver}\\blender.exe"
-            if os.path.exists(alt_path) and not os.path.exists(blender_path):
-                blender_path = alt_path
+        blender_path = get_blender_path()
 
         target_face_count_val = f"int('{target_face_count}')" if (target_face_count and target_face_count.strip()) else "None"
 

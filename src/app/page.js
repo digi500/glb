@@ -96,6 +96,7 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [localServerUrl, setLocalServerUrl] = useState("http://localhost:5000");
   const [refImageUrl, setRefImageUrl] = useState("");
+  const [visibleSpecs, setVisibleSpecs] = useState({});
 
   // Seçilen Kıyaslama Motorları (Varsayılan olarak ilk iki motor)
   const [selectedEngines, setSelectedEngines] = useState(["triposr", "instantmesh"]);
@@ -270,11 +271,18 @@ export default function Home() {
                         {/* Başlık çubuğu */}
                         <div className={styles.previewHeader}>
                           <span>{engineInfo.name}</span>
+                          <button 
+                            className="btn btn-secondary"
+                            onClick={() => setVisibleSpecs(prev => ({ ...prev, [modelKey]: !prev[modelKey] }))}
+                            style={{ marginLeft: "auto", padding: "0.2rem 0.5rem", fontSize: "0.7rem", height: "24px", marginRight: "0.3rem" }}
+                          >
+                            ℹ️ {visibleSpecs[modelKey] ? "Gizle" : "Özellikler"}
+                          </button>
                           {model.url && (
                             <button 
                               className="btn btn-secondary"
                               onClick={() => triggerDownload(model.url, `${modelKey}_model.glb`)}
-                              style={{ marginLeft: "auto", padding: "0.2rem 0.5rem", fontSize: "0.7rem", height: "24px" }}
+                              style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem", height: "24px" }}
                             >
                               💾 İndir
                             </button>
@@ -282,28 +290,30 @@ export default function Home() {
                         </div>
 
                         {/* Motor Sabit Teknik Özellikleri Overlay */}
-                        <div className={styles.previewSpecOverlay}>
-                          <div className={styles.previewSpecTitle}>Motor Özellikleri</div>
-                          <div className={styles.previewSpecRow}>
-                            <span className={styles.previewSpecLabel}>⏱️ Hız:</span>
-                            <span className={styles.previewSpecValue}>{engineInfo.speed}</span>
+                        {visibleSpecs[modelKey] && (
+                          <div className={styles.previewSpecOverlay}>
+                            <div className={styles.previewSpecTitle}>Motor Özellikleri</div>
+                            <div className={styles.previewSpecRow}>
+                              <span className={styles.previewSpecLabel}>⏱️ Hız:</span>
+                              <span className={styles.previewSpecValue}>{engineInfo.speed}</span>
+                            </div>
+                            <div className={styles.previewSpecRow}>
+                              <span className={styles.previewSpecLabel}>💾 VRAM:</span>
+                              <span className={styles.previewSpecValueVram}>{engineInfo.vram}</span>
+                            </div>
+                            <div className={styles.previewSpecRow}>
+                              <span className={styles.previewSpecLabel}>🔺 Poligon:</span>
+                              <span className={styles.previewSpecValue}>{engineInfo.polyType}</span>
+                            </div>
+                            <div className={styles.previewSpecRow}>
+                              <span className={styles.previewSpecLabel}>🖼️ Doku:</span>
+                              <span className={styles.previewSpecValue}>{engineInfo.texture}</span>
+                            </div>
                           </div>
-                          <div className={styles.previewSpecRow}>
-                            <span className={styles.previewSpecLabel}>💾 VRAM:</span>
-                            <span className={styles.previewSpecValueVram}>{engineInfo.vram}</span>
-                          </div>
-                          <div className={styles.previewSpecRow}>
-                            <span className={styles.previewSpecLabel}>🔺 Poligon:</span>
-                            <span className={styles.previewSpecValue}>{engineInfo.polyType}</span>
-                          </div>
-                          <div className={styles.previewSpecRow}>
-                            <span className={styles.previewSpecLabel}>🖼️ Doku:</span>
-                            <span className={styles.previewSpecValue}>{engineInfo.texture}</span>
-                          </div>
-                        </div>
+                        )}
 
                         {/* 3D Gösterici Alanı */}
-                        <div style={{ flex: 1, position: "relative", marginTop: "115px" }}> {/* Spec overlay yüksekliği kadar üstten boşluk bırakalım */}
+                        <div style={{ flex: 1, position: "relative", marginTop: visibleSpecs[modelKey] ? "115px" : "0px" }}>
                           {model.loading ? (
                             <div className={styles.previewPlaceholder}>
                               <div className="spinner"></div>
