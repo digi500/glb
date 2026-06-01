@@ -664,11 +664,12 @@
 /* Yan Yana Karşılaştırma Izgarası */
 .previewGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 0.75rem;
   width: 100%;
   height: 100%;
   position: relative;
+  overflow-y: auto;
 }
 
 .previewColumn {
@@ -679,21 +680,23 @@
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.2);
   overflow: hidden;
+  position: relative;
 }
 
 .previewHeader {
   background: rgba(255, 255, 255, 0.03);
   border-bottom: 1px solid var(--border-color);
   padding: 0.4rem 0.6rem;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  height: 34px;
+  height: 36px;
+  flex-shrink: 0;
 }
 
 .previewPlaceholder {
@@ -735,4 +738,91 @@
   padding: 2rem;
   text-align: center;
   gap: 1rem;
+}
+
+/* Checklist Seçici Tasarımı */
+.checklistContainer {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.5rem;
+  max-height: 150px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.checklistItem {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.75rem;
+  color: var(--text-main);
+  cursor: pointer;
+  padding: 0.25rem 0.45rem;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.checklistItem:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.checklistItem input[type="checkbox"] {
+  accent-color: var(--accent-indigo);
+  cursor: pointer;
+}
+
+/* Motor Sabit Özellikler Overlay Paneli (Önizleme İçinde) */
+.previewSpecOverlay {
+  position: absolute;
+  top: 42px;
+  left: 6px;
+  right: 6px;
+  background: rgba(11, 15, 25, 0.95);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 0.7rem;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.previewSpecTitle {
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.65rem;
+}
+
+.previewSpecRow {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+  padding-bottom: 0.15rem;
+}
+
+.previewSpecRow:last-child {
+  border-bottom: none;
+}
+
+.previewSpecLabel {
+  color: var(--text-muted);
+}
+
+.previewSpecValue {
+  color: var(--accent-cyan);
+  font-weight: 500;
+}
+
+.previewSpecValueVram {
+  color: #f59e0b; /* Turuncu uyarı rengi (VRAM için) */
+  font-weight: 600;
 }

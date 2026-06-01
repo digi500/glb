@@ -10,7 +10,90 @@ const EXAMPLES = [
   { id: "modern", label: "Modern", path: "/ornek_resimler/modern_transparent.png" }
 ];
 
-export default function GeneratorPanel({ onModelLoaded, onStartGeneration }) {
+const ENGINES = {
+  triposr: {
+    name: "TripoSR (Stability AI)",
+    speed: "15-45 sn",
+    vram: "4-6 GB",
+    polyType: "🔺 Üçgen (Triangles)",
+    texture: "🎨 Köşe Noktası Rengi",
+    desc: "GTX 1660 için en uygun yerel hızlı motor."
+  },
+  instantmesh: {
+    name: "InstantMesh (Tencent)",
+    speed: "2-3 dk",
+    vram: "12 GB",
+    polyType: "🔺 Üçgen (Triangles)",
+    texture: "🖼️ 1024x1024 UV Kaplama",
+    desc: "Çoklu açı üreterek tutarlı 3D nesneler oluşturur."
+  },
+  trellis: {
+    name: "TRELLIS (Microsoft)",
+    speed: "60-90 sn",
+    vram: "12-16 GB",
+    polyType: "🔺 Üçgen (Triangles)",
+    texture: "🖼️ 2048x2048 Tam PBR",
+    desc: "E-ticaret ve ürün katalogları için en yüksek geometri kalitesi."
+  },
+  hunyuan3d: {
+    name: "Hunyuan3D-V2 (Tencent)",
+    speed: "2-3 dk",
+    vram: "16-29 GB",
+    polyType: "🔺/⬛ Üçgen veya Dörtgen",
+    texture: "🖼️ 2048x2048 PBR Sentez",
+    desc: "Poligon sayısı ve topolojisi ayarlanabilir oyun motoru dostu model."
+  },
+  sf3d: {
+    name: "Stable Fast 3D (Stability AI)",
+    speed: "< 1 sn",
+    vram: "6 GB",
+    polyType: "🔺 Üçgen (Low-Poly)",
+    texture: "🖼️ 1024x1024 Hızlı UV",
+    desc: "Saniyeler altında oyun-hazır düşük poligonlu model üretir."
+  },
+  unique3d: {
+    name: "Unique3D (Tencent)",
+    speed: "3-4 dk",
+    vram: "16 GB",
+    polyType: "🔺 Üçgen (İnce Detay)",
+    texture: "🖼️ 2048x2048 Normal Harita",
+    desc: "Normal map üreterek nesnedeki çatlak ve ince kabartmaları işler."
+  },
+  lgm: {
+    name: "LGM (Large Gaussian Model)",
+    speed: "5 sn",
+    vram: "8 GB",
+    polyType: "🔺 Üçgen (Gaussian)",
+    texture: "🖼️ 1024x1024 Albedo",
+    desc: "Nokta bulutunu hızlıca örgüye çevirir, organik yapılar için iyidir."
+  },
+  crm: {
+    name: "CRM (Convolutional)",
+    speed: "10 sn",
+    vram: "8 GB",
+    polyType: "🔺 Üçgen (Triangles)",
+    texture: "🖼️ 1024x1024 Albedo",
+    desc: "Triplane projeksiyonu kullanan hızlı simetrik model oluşturucu."
+  },
+  dreamgaussian: {
+    name: "DreamGaussian",
+    speed: "15 sn",
+    vram: "6 GB",
+    polyType: "🔺 Üçgen (Düzensiz)",
+    texture: "🖼️ 2048x2048 Yüksek Res",
+    desc: "Geometrisi pürüzlü ancak dokusu çok net olan hızlı prototipleme motoru."
+  },
+  one2345: {
+    name: "One-2-3-45 / MeshPrime",
+    speed: "60 sn",
+    vram: "12 GB",
+    polyType: "🔺 Üçgen (SDF Kapalı)",
+    texture: "🖼️ 1024x1024 Albedo",
+    desc: "SDF hacimsel modeli çıkarır, 3D yazıcı üretimi için en ideal kapalı geometri."
+  }
+};
+
+export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selectedEngines = ["triposr", "instantmesh"], onToggleEngine }) {
   // Akış ve Poligon Seçenekleri
   const [flowMode, setFlowMode] = useState("manual"); // "manual" veya "auto"
   const [polygonType, setPolygonType] = useState("triangle"); // "triangle" veya "quad"
@@ -245,75 +328,58 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration }) {
     await run3DGeneration(inputImage);
   };
 
-  // 3D Model Üretimi İşlemi (Çift model ardışık üretimi)
+  // 3D Model Üretimi İşlemi (Seçilen tüm motorları sırayla çalıştırır)
   const run3DGeneration = async (imageSrc) => {
+    if (!selectedEngines || selectedEngines.length === 0) {
+      alert("Lütfen en az bir 3D motoru seçin.");
+      return;
+    }
+
     setIsLoading(true);
     const localUrl = getLocalUrl();
     const refImage = removedBgImage || uploadedImageBase64 || (selectedExample && selectedExample.path);
 
-    // Her iki model için yüklenme durumunu başlat
+    // Tüm seçilen modeller için yüklenme durumunu tetikle
     if (onStartGeneration) {
-      onStartGeneration("triposr");
-      onStartGeneration("instantmesh");
+      selectedEngines.forEach((key) => onStartGeneration(key));
     }
 
-    let triposrBlob = null;
-    let triposrUrl = "";
+    let finalBlob = null;
+    let finalUrl = "";
 
-    // 1. ADIM: TripoSR Üretimi
-    try {
-      setStatus("1/2: TripoSR 3D modeli örülüyor...");
-      setLogs("TripoSR yerel motoru çalıştırılıyor...");
-      startProgress(45); // TripoSR için tahmini 45 saniye
+    // Sıralı olarak tüm motorları çağır
+    for (let i = 0; i < selectedEngines.length; i++) {
+      const engineKey = selectedEngines[i];
+      const engineName = ENGINES[engineKey]?.name || engineKey;
 
-      const response = await fetch(`${localUrl}/api/generate-3d`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: imageSrc, model: "triposr" })
-      });
-      
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "TripoSR üretilemedi.");
+      setStatus(`${i + 1}/${selectedEngines.length}: ${engineName} örülüyor...`);
+      setLogs(`${engineName} yerel motoru çalıştırılıyor. Lütfen bekleyin...`);
 
-      const glbRes = await fetch(data.glb);
-      triposrBlob = await glbRes.blob();
-      triposrUrl = URL.createObjectURL(triposrBlob);
+      const estTime = engineKey === "sf3d" ? 8 : (engineKey === "triposr" ? 45 : 60);
+      startProgress(estTime);
 
-      onModelLoaded(triposrUrl, triposrBlob.size, refImage, "triposr");
-    } catch (err) {
-      console.error(err);
-      onModelLoaded("", 0, "", "triposr", err.message);
-    }
+      try {
+        const response = await fetch(`${localUrl}/api/generate-3d`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: imageSrc, model: engineKey })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `${engineName} üretilemedi.`);
 
-    // 2. ADIM: InstantMesh Üretimi
-    let finalBlob = triposrBlob;
-    let finalUrl = triposrUrl;
+        const glbRes = await fetch(data.glb);
+        const glbBlob = await glbRes.blob();
+        const glbUrl = URL.createObjectURL(glbBlob);
 
-    try {
-      setStatus("2/2: InstantMesh 3D modeli örülüyor...");
-      setLogs("InstantMesh (Bake Texture) yerel motoru çalıştırılıyor...");
-      startProgress(60); // InstantMesh için tahmini 60 saniye
-
-      const response = await fetch(`${localUrl}/api/generate-3d`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: imageSrc, model: "instantmesh" })
-      });
-      
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "InstantMesh üretilemedi.");
-
-      const glbRes = await fetch(data.glb);
-      const instantmeshBlob = await glbRes.blob();
-      const instantmeshUrl = URL.createObjectURL(instantmeshBlob);
-
-      onModelLoaded(instantmeshUrl, instantmeshBlob.size, refImage, "instantmesh");
-      
-      finalBlob = instantmeshBlob;
-      finalUrl = instantmeshUrl;
-    } catch (err) {
-      console.error(err);
-      onModelLoaded("", 0, "", "instantmesh", err.message);
+        onModelLoaded(glbUrl, glbBlob.size, refImage, engineKey);
+        
+        finalBlob = glbBlob;
+        finalUrl = glbUrl;
+      } catch (err) {
+        console.error(err);
+        onModelLoaded("", 0, "", engineKey, err.message);
+      }
     }
 
     // Aşamayı sonlandır
@@ -322,7 +388,7 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration }) {
     setCurrentStep(2);
     setGeneratedGlbUrl(finalUrl);
     setGeneratedGlbSize(finalBlob ? finalBlob.size : 0);
-    setStatus("Her iki model de başarıyla oluşturuldu!");
+    setStatus("Tüm modeller başarıyla oluşturuldu!");
 
     if (flowMode === "auto" && finalBlob) {
       runGlbOptimization(finalBlob);
@@ -405,7 +471,10 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration }) {
     setStatus("");
     setLogs("");
     setProgress(0);
-    onModelLoaded("", 0, "");
+    // Seçili olan tüm motorların pencerelerini sıfırla
+    if (selectedEngines) {
+      selectedEngines.forEach((key) => onModelLoaded("", 0, "", key));
+    }
   };
 
   return (
@@ -447,6 +516,26 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration }) {
           >
             ⚡ Tam Otomatik
           </div>
+        </div>
+      </div>
+
+      {/* 3D Karşılaştırma Motorları Seçici Listesi */}
+      <div className="input-group">
+        <label className="input-label" style={{ fontSize: "0.7rem" }}>Kıyaslanacak 3D Motorları</label>
+        <div className={styles.checklistContainer}>
+          {Object.keys(ENGINES).map((key) => (
+            <label key={key} className={styles.checklistItem}>
+              <input
+                type="checkbox"
+                checked={selectedEngines.includes(key)}
+                onChange={() => onToggleEngine(key)}
+                disabled={isLoading}
+              />
+              <span style={{ fontWeight: selectedEngines.includes(key) ? 600 : 400 }}>
+                {ENGINES[key].name}
+              </span>
+            </label>
+          ))}
         </div>
       </div>
 

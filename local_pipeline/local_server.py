@@ -207,7 +207,39 @@ def generate_3d():
             print(f"[*] TripoSR Python API ile yerel olarak 3D model örülüyor (Motor: {model_type})...")
             triposr_script = BASE_DIR / "TripoSR" / "run.py"
             if triposr_script.exists():
-                # Önceden gri zemini kendimiz hazırladığımız için --no-remove-bg ekledik
+                # Model tipine göre parametreleri dinamik özelleştir (resolution, texture-baking)
+                mc_resolution = 256
+                bake_texture = False
+                texture_resolution = 2048
+
+                if model_type == "sf3d":
+                    mc_resolution = 160
+                    bake_texture = True
+                    texture_resolution = 1024
+                elif model_type == "triposr":
+                    mc_resolution = 256
+                    bake_texture = False
+                elif model_type == "dreamgaussian":
+                    mc_resolution = 224
+                    bake_texture = True
+                    texture_resolution = 2048
+                elif model_type == "lgm" or model_type == "crm":
+                    mc_resolution = 256
+                    bake_texture = True
+                    texture_resolution = 1024
+                elif model_type == "instantmesh" or model_type == "one2345":
+                    mc_resolution = 320
+                    bake_texture = True
+                elif model_type == "hunyuan3d":
+                    mc_resolution = 352
+                    bake_texture = True
+                elif model_type == "trellis":
+                    mc_resolution = 384
+                    bake_texture = True
+                elif model_type == "unique3d":
+                    mc_resolution = 416
+                    bake_texture = True
+
                 cmd = [
                     sys.executable,
                     str(triposr_script),
@@ -216,20 +248,32 @@ def generate_3d():
                     str(OUTPUT_DIR),
                     "--model-save-format",
                     "glb",
-                    "--no-remove-bg"
+                    "--no-remove-bg",
+                    "--mc-resolution",
+                    str(mc_resolution)
                 ]
 
-                # Eğer "instantmesh" seçildiyse yüksek kalite için doku pişirmeyi (bake texture) dene
-                if model_type == "instantmesh":
+                if bake_texture:
                     cmd.append("--bake-texture")
-                    print("[*] Yüksek kaliteli doku üretimi (Texture Baking) aktif ediliyor...")
+                    cmd.extend(["--texture-resolution", str(texture_resolution)])
+                    print(f"[*] Doku Üretimi Aktif -> Res: {texture_resolution}px, MC-Grid: {mc_resolution}")
 
                 try:
                     subprocess.run(cmd, check=True)
                 except subprocess.CalledProcessError as e:
-                    if model_type == "instantmesh":
-                        print("[!] Doku pişirme başarısız oldu (xatlas eksik olabilir). Düz kaplama ile devam ediliyor...")
-                        cmd_fallback = [c for c in cmd if c != "--bake-texture"]
+                    # Eğer texture baking kütüphanesi eksikse fallback yapıp standart dokusuz çözünürlükle dene
+                    if bake_texture:
+                        print("[!] Özel motor parametreleri çalıştırılamadı. Standart TripoSR moduna geri dönülüyor...")
+                        cmd_fallback = [
+                            sys.executable,
+                            str(triposr_script),
+                            str(image_path),
+                            "--output-dir",
+                            str(OUTPUT_DIR),
+                            "--model-save-format",
+                            "glb",
+                            "--no-remove-bg"
+                        ]
                         subprocess.run(cmd_fallback, check=True)
                     else:
                         raise e
