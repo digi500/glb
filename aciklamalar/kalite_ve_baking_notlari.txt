@@ -1,0 +1,48 @@
+================================================================================
+📄 3D KALİTE, POLİGON VE BAKING (KAPLAMA PİŞİRME) GELİŞTİRME NOTLARI
+================================================================================
+
+[SORUN ANALİZİ]
+Mevcut sistemde modellerin "çamur gibi", detayları belirsiz ve deforme çıkmasının
+temel sebebi, yüksek kalite parametrelerinin ve sonrasındaki detay aktarım (baking)
+zincirinin uygulamada bulunmamasıdır.
+
+[YENİ AKIŞ VE TASARIM PRENSİBİ]
+Kullanıcının talebi doğrultusunda, tüm bu gelişmiş ayarlar ve test mekanizmaları
+doğrudan KENDİ UYGULAMAMIZA entegre edilecektir. Süreç şu şekilde işleyecektir:
+
+1. AŞAMA: Yüksek Kaliteli 3D Üretimi (High-Poly Generation)
+   - Uygulamamızın arayüzünde (Hunyuan3D/Trellis panellerinde) şu gelişmiş ayarlar
+     kullanıcıya sunulacaktır:
+     * Inference Steps (İşlem Adımları)
+     * Octree Resolution (Geometri Kalitesi)
+     * Seed (Tohum Değeri ve Randomize seçeneği)
+     * Target Face Number (Hedef Poligon Sayısı)
+     * Simplify Mesh (Sadeleştirme Aktif/Pasif)
+   - Kullanıcı bu ayarları kullanarak öncelikle istediği yüksek kalitede (High-Poly)
+     3D modelleri üretecek ve kütüphanesine kaydedecek.
+
+2. AŞAMA: Ayrı "Bake" (Pişirme) Butonu ve Toplu/Tekli İşleme
+   - Uygulamaya özel bir **"Bake"** butonu veya paneli eklenecektir.
+   - Bu panelde, daha önce üretilmiş olan yüksek kaliteli (High-Poly) modeller listelenecektir.
+   - Kullanıcı bu kaliteli modeller arasından seçtiklerini:
+     * İster **tek tek (bireysel olarak)**,
+     * İster **toplu (batch processing)** olarak seçip "Bake" işlemini başlatabilecektir.
+   - Sistem arka planda (Blender otomasyonu ile) seçilen modellerin poligonlarını
+     azaltacak, gölge ve detaylarını Normal Map olarak çıkaracaktır.
+
+3. AŞAMA: Çoklu Format Desteği ve Dışa Aktarım (Export)
+   - Çıktı formatlarında esneklik sağlanacaktır. Kullanıcı modeli dışa aktarırken
+     veya pişirirken şu formatları seçebilecektir:
+     * **.GLB (Varsayılan / Default)**
+     * **.OBJ**
+     * **.PLY**
+     * **.STL**
+     * veya diğer yaygın 3D formatları.
+   - Arayüzde varsayılan (default) seçim her zaman **.GLB** olacak, ancak kullanıcı
+     ihtiyacına göre (örneğin 3D yazıcı için STL, başka yazılımlar için OBJ) 
+     hedef formatı seçip o şekilde kaydedebilecektir.
+
+================================================================================
+Bu notlar, kodlama aşamasına geçildiğinde ana mimariyi kurmak için tartışılacaktır.
+================================================================================

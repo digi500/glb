@@ -201,6 +201,9 @@ def generate_3d():
 
         # Yapay zeka model motorunu al
         model_type = data.get("model", "triposr")
+        params = data.get("params", {})
+        
+        print(f"[*] Alınan Parametreler ({model_type}): {params}")
 
         # TripoSR yerel olarak kuruluysa doğrudan çalıştır
         if TSR_AVAILABLE:
@@ -208,37 +211,44 @@ def generate_3d():
             triposr_script = BASE_DIR / "TripoSR" / "run.py"
             if triposr_script.exists():
                 # Model tipine göre parametreleri dinamik özelleştir (resolution, texture-baking)
-                mc_resolution = 256
-                bake_texture = False
-                texture_resolution = 2048
+                mc_resolution = params.get("mc_resolution")
+                bake_texture = params.get("bake_texture")
+                texture_resolution = params.get("texture_resolution")
 
-                if model_type == "sf3d":
-                    mc_resolution = 160
-                    bake_texture = True
-                    texture_resolution = 1024
-                elif model_type == "triposr":
-                    mc_resolution = 256
-                    bake_texture = False
-                elif model_type == "dreamgaussian":
-                    mc_resolution = 224
-                    bake_texture = True
-                    texture_resolution = 2048
-                elif model_type == "lgm" or model_type == "crm":
-                    mc_resolution = 256
-                    bake_texture = True
-                    texture_resolution = 1024
-                elif model_type == "instantmesh" or model_type == "one2345":
-                    mc_resolution = 320
-                    bake_texture = True
-                elif model_type == "hunyuan3d":
-                    mc_resolution = 352
-                    bake_texture = True
-                elif model_type == "trellis":
-                    mc_resolution = 384
-                    bake_texture = True
-                elif model_type == "unique3d":
-                    mc_resolution = 416
-                    bake_texture = True
+                # Eğer parametreler boş veya belirtilmemişse varsayılanları ata
+                if mc_resolution is None:
+                    if model_type == "sf3d":
+                        mc_resolution = 160
+                    elif model_type == "triposr":
+                        mc_resolution = 256
+                    elif model_type == "dreamgaussian":
+                        mc_resolution = 224
+                    elif model_type == "lgm" or model_type == "crm":
+                        mc_resolution = 256
+                    elif model_type == "instantmesh" or model_type == "one2345":
+                        mc_resolution = 320
+                    elif model_type == "hunyuan3d":
+                        mc_resolution = 352
+                    elif model_type == "trellis":
+                        mc_resolution = 384
+                    elif model_type == "unique3d":
+                        mc_resolution = 416
+                    else:
+                        mc_resolution = 256
+
+                if bake_texture is None:
+                    if model_type in ["sf3d", "dreamgaussian", "lgm", "crm", "instantmesh", "one2345", "hunyuan3d", "trellis", "unique3d"]:
+                        bake_texture = True
+                    else:
+                        bake_texture = False
+
+                if texture_resolution is None:
+                    if model_type == "sf3d":
+                        texture_resolution = 1024
+                    elif model_type == "dreamgaussian":
+                        texture_resolution = 2048
+                    else:
+                        texture_resolution = 1024
 
                 cmd = [
                     sys.executable,

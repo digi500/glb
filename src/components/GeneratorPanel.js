@@ -105,6 +105,417 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
   const [localModel, setLocalModel] = useState("triposr"); // "triposr" veya "instantmesh"
   const [preset, setPreset] = useState("mobile"); // "mobile", "desktop", "original"
   
+  // Seçilen her motorun kendi özel konfigürasyonu
+  const [engineConfigs, setEngineConfigs] = useState({
+    triposr: {
+      mc_resolution: 256,
+      bake_texture: false
+    },
+    instantmesh: {
+      inference_steps: 30,
+      simplify_ratio: 0.85
+    },
+    trellis: {
+      sparse_guidance: 7.5,
+      sparse_steps: 12,
+      latent_guidance: 3.0,
+      latent_steps: 12,
+      simplify_ratio: 0.95,
+      texture_resolution: 1024
+    },
+    hunyuan3d: {
+      inference_steps: 30,
+      octree_resolution: 256,
+      target_face_number: 40000,
+      simplify_mesh: true
+    },
+    sf3d: {
+      texture_resolution: 1024,
+      simplify_ratio: 0.85
+    },
+    unique3d: {
+      mc_resolution: 416,
+      bake_texture: true
+    },
+    lgm: {
+      mc_resolution: 256,
+      bake_texture: true,
+      texture_resolution: 1024
+    },
+    crm: {
+      guidance_scale: 5.0,
+      sampling_steps: 12,
+      texture_resolution: 1024
+    },
+    dreamgaussian: {
+      mc_resolution: 224,
+      bake_texture: true,
+      texture_resolution: 2048
+    },
+    one2345: {
+      mc_resolution: 320,
+      bake_texture: true
+    }
+  });
+
+  const [activeInfoTooltip, setActiveInfoTooltip] = useState(null);
+
+  const getHardwareUsageText = (key) => {
+    switch (key) {
+      case "triposr":
+        return "GPU (VRAM - ~4-6 GB) kullanır. Ekran kartınızda saniyeler içinde doğrudan ve hızlı çalışır.";
+      case "sf3d":
+        return "GPU (VRAM - ~6 GB) kullanır. Sınırda yerel ekran kartı belleğiyle en kaliteli dokulu çıktıyı hızlıca üretir.";
+      case "dreamgaussian":
+        return "GPU (VRAM - ~6 GB) kullanır. Hızlı yerel model üretimidir.";
+      case "crm":
+        return "GPU (VRAM - ~6-8 GB) kullanır. Kartınızın sınırlarında düşük bellek (Low-VRAM) moduyla çalışır.";
+      case "lgm":
+        return "CPU (Sistem RAM - ~12 GB) kullanır. Ekran kartı yetmediğinde CPU offload ile işlemci üzerinden yavaşça işlenir.";
+      case "instantmesh":
+        return "CPU (Sistem RAM - ~16 GB) kullanır. 6 GB VRAM yetmediği için işlemciye (CPU) aktarılır; 5-8 dk sürer ama bilgisayarı çökertmeden yerelde temiz geometri üretir.";
+      case "trellis":
+        return "Sisteminizde yerel çalıştırılamaz (En az 32 GB RAM ister). Bulut GPU sunucusu (A100 - 24 GB VRAM) üzerinden çalışır.";
+      case "hunyuan3d":
+        return "Sisteminizde yerel çalıştırılamaz (En az 32 GB RAM ister). Bulut GPU sunucusu üzerinden çalışır.";
+      case "unique3d":
+        return "Yerel CPU modunda aşırı yavaş çalışır. Bulut GPU üzerinden çalıştırılması önerilir.";
+      case "one2345":
+        return "CPU (Sistem RAM - ~12 GB) modunda çalışabilir. 3D yazıcı odaklı geometri çıkartır.";
+      default:
+        return "GPU (VRAM) veya CPU (Sistem RAM) kullanır.";
+    }
+  };
+
+  const calculateTotalEstimatedTime = () => {
+    let totalSeconds = 0;
+    selectedEngines.forEach((key) => {
+      const config = engineConfigs[key];
+      if (key === "triposr") {
+        totalSeconds += config.bake_texture ? 45 : 20;
+      } else if (key === "sf3d") {
+        totalSeconds += 10;
+      } else if (key === "crm") {
+        totalSeconds += 15;
+      } else if (key === "instantmesh") {
+        totalSeconds += (config.inference_steps || 30) * 10; // 30 step = 300 saniye
+      } else if (key === "trellis") {
+        totalSeconds += 75; // Bulut kuyruk + işlem
+      } else if (key === "hunyuan3d") {
+        totalSeconds += 120; // Bulut kuyruk + işlem
+      } else if (key === "lgm") {
+        totalSeconds += 30;
+      } else if (key === "dreamgaussian") {
+        totalSeconds += 25;
+      } else if (key === "unique3d") {
+        totalSeconds += 180;
+      } else if (key === "one2345") {
+        totalSeconds += 60;
+      }
+    });
+
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    if (mins > 0) {
+      return `${mins} dk ${secs} sn`;
+    }
+    return `${secs} sn`;
+  };
+
+  const updateConfig = (engine, field, value) => {
+    setEngineConfigs(prev => ({
+      ...prev,
+      [engine]: {
+        ...prev[engine],
+        [field]: value
+      }
+    }));
+  };
+
+  const renderEngineConfigCard = (key, queueNumber) => {
+    const config = engineConfigs[key];
+    const info = ENGINES[key];
+    if (!config) return null;
+
+    return (
+      <div key={key} className={styles.engineConfigCard}>
+        <div className={styles.engineConfigHeader}>
+          <span>⚙️ {info.name}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <span 
+              className={styles.infoIcon} 
+              onClick={() => setActiveInfoTooltip(activeInfoTooltip === key ? null : key)}
+              title="Donanım Kullanım Bilgisi"
+              style={{ cursor: "pointer" }}
+            >
+              ℹ️
+            </span>
+            <span className={styles.engineConfigQueueBadge}>Sıra: {queueNumber}</span>
+          </div>
+        </div>
+
+        {activeInfoTooltip === key && (
+          <div className={styles.hardwareInfoBox}>
+            <strong>💻 Donanım Kullanımı:</strong>
+            <p>{getHardwareUsageText(key)}</p>
+          </div>
+        )}
+
+        {key === "triposr" && (
+          <>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>MC Çözünürlük:</span>
+              <input
+                type="number"
+                className={styles.engineConfigInput}
+                value={config.mc_resolution}
+                onChange={(e) => updateConfig(key, "mc_resolution", parseInt(e.target.value) || 256)}
+              />
+            </div>
+            <div className={styles.engineConfigRow} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={config.bake_texture}
+                onChange={(e) => updateConfig(key, "bake_texture", e.target.checked)}
+              />
+              <span className={styles.engineConfigLabel}>Doku Sentezle (Bake)</span>
+            </div>
+          </>
+        )}
+
+        {key === "sf3d" && (
+          <>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Sadeleştirme Oranı:</span>
+              <input
+                type="number"
+                step="0.05"
+                min="0.1"
+                max="1.0"
+                className={styles.engineConfigInput}
+                value={config.simplify_ratio}
+                onChange={(e) => updateConfig(key, "simplify_ratio", parseFloat(e.target.value) || 0.85)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Doku Çözünürlüğü:</span>
+              <select
+                className={styles.engineConfigInput}
+                value={config.texture_resolution}
+                onChange={(e) => updateConfig(key, "texture_resolution", parseInt(e.target.value) || 1024)}
+              >
+                <option value={512}>512px (Mobil)</option>
+                <option value={1024}>1024px (Normal)</option>
+                <option value={2048}>2048px (Yüksek)</option>
+              </select>
+            </div>
+          </>
+        )}
+
+        {key === "crm" && (
+          <>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Guidance Scale:</span>
+              <input
+                type="number"
+                step="0.5"
+                className={styles.engineConfigInput}
+                value={config.guidance_scale}
+                onChange={(e) => updateConfig(key, "guidance_scale", parseFloat(e.target.value) || 5.0)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>İşlem Adımları:</span>
+              <input
+                type="number"
+                className={styles.engineConfigInput}
+                value={config.sampling_steps}
+                onChange={(e) => updateConfig(key, "sampling_steps", parseInt(e.target.value) || 12)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Doku Çözünürlüğü:</span>
+              <select
+                className={styles.engineConfigInput}
+                value={config.texture_resolution}
+                onChange={(e) => updateConfig(key, "texture_resolution", parseInt(e.target.value) || 1024)}
+              >
+                <option value={512}>512px</option>
+                <option value={1024}>1024px</option>
+                <option value={2048}>2048px</option>
+              </select>
+            </div>
+          </>
+        )}
+
+        {key === "instantmesh" && (
+          <>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>İşlem Adımları (Steps):</span>
+              <input
+                type="number"
+                className={styles.engineConfigInput}
+                value={config.inference_steps}
+                onChange={(e) => updateConfig(key, "inference_steps", parseInt(e.target.value) || 30)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Sadeleştirme Oranı:</span>
+              <input
+                type="number"
+                step="0.05"
+                className={styles.engineConfigInput}
+                value={config.simplify_ratio}
+                onChange={(e) => updateConfig(key, "simplify_ratio", parseFloat(e.target.value) || 0.85)}
+              />
+            </div>
+          </>
+        )}
+
+        {key === "trellis" && (
+          <>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Seyrek Yönlendirme:</span>
+              <input
+                type="number"
+                step="0.5"
+                className={styles.engineConfigInput}
+                value={config.sparse_guidance}
+                onChange={(e) => updateConfig(key, "sparse_guidance", parseFloat(e.target.value) || 7.5)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Seyrek Adımlar:</span>
+              <input
+                type="number"
+                className={styles.engineConfigInput}
+                value={config.sparse_steps}
+                onChange={(e) => updateConfig(key, "sparse_steps", parseInt(e.target.value) || 12)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Gizli Yönlendirme:</span>
+              <input
+                type="number"
+                step="0.5"
+                className={styles.engineConfigInput}
+                value={config.latent_guidance}
+                onChange={(e) => updateConfig(key, "latent_guidance", parseFloat(e.target.value) || 3.0)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Gizli Adımlar:</span>
+              <input
+                type="number"
+                className={styles.engineConfigInput}
+                value={config.latent_steps}
+                onChange={(e) => updateConfig(key, "latent_steps", parseInt(e.target.value) || 12)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Sadeleştirme Oranı:</span>
+              <input
+                type="number"
+                step="0.01"
+                className={styles.engineConfigInput}
+                value={config.simplify_ratio}
+                onChange={(e) => updateConfig(key, "simplify_ratio", parseFloat(e.target.value) || 0.95)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Doku Çözünürlüğü:</span>
+              <select
+                className={styles.engineConfigInput}
+                value={config.texture_resolution}
+                onChange={(e) => updateConfig(key, "texture_resolution", parseInt(e.target.value) || 1024)}
+              >
+                <option value={512}>512px</option>
+                <option value={1024}>1024px</option>
+                <option value={2048}>2048px</option>
+              </select>
+            </div>
+          </>
+        )}
+
+        {key === "hunyuan3d" && (
+          <>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>İşlem Adımları (Steps):</span>
+              <input
+                type="number"
+                className={styles.engineConfigInput}
+                value={config.inference_steps}
+                onChange={(e) => updateConfig(key, "inference_steps", parseInt(e.target.value) || 30)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Hacim Çözünürlüğü:</span>
+              <input
+                type="number"
+                className={styles.engineConfigInput}
+                value={config.octree_resolution}
+                onChange={(e) => updateConfig(key, "octree_resolution", parseInt(e.target.value) || 256)}
+              />
+            </div>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>Hedef Poligon (Face):</span>
+              <input
+                type="number"
+                className={styles.engineConfigInput}
+                value={config.target_face_number}
+                onChange={(e) => updateConfig(key, "target_face_number", parseInt(e.target.value) || 40000)}
+              />
+            </div>
+            <div className={styles.engineConfigRow} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={config.simplify_mesh}
+                onChange={(e) => updateConfig(key, "simplify_mesh", e.target.checked)}
+              />
+              <span className={styles.engineConfigLabel}>Ağı Sadeleştir</span>
+            </div>
+          </>
+        )}
+
+        {(key === "dreamgaussian" || key === "lgm" || key === "unique3d" || key === "one2345") && (
+          <>
+            <div className={styles.engineConfigRow}>
+              <span className={styles.engineConfigLabel}>MC Çözünürlük:</span>
+              <input
+                type="number"
+                className={styles.engineConfigInput}
+                value={config.mc_resolution}
+                onChange={(e) => updateConfig(key, "mc_resolution", parseInt(e.target.value) || 256)}
+              />
+            </div>
+            <div className={styles.engineConfigRow} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={config.bake_texture}
+                onChange={(e) => updateConfig(key, "bake_texture", e.target.checked)}
+              />
+              <span className={styles.engineConfigLabel}>Doku Sentezle</span>
+            </div>
+            {config.texture_resolution !== undefined && (
+              <div className={styles.engineConfigRow}>
+                <span className={styles.engineConfigLabel}>Doku Çözünürlüğü:</span>
+                <select
+                  className={styles.engineConfigInput}
+                  value={config.texture_resolution}
+                  onChange={(e) => updateConfig(key, "texture_resolution", parseInt(e.target.value) || 1024)}
+                >
+                  <option value={512}>512px</option>
+                  <option value={1024}>1024px</option>
+                  <option value={2048}>2048px</option>
+                </select>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+  
   // Görsel ve 3D Durumları
   const [selectedExample, setSelectedExample] = useState(null);
   const [uploadedImageBase64, setUploadedImageBase64] = useState("");
@@ -362,7 +773,11 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
         const response = await fetch(`${localUrl}/api/generate-3d`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: imageSrc, model: engineKey })
+          body: JSON.stringify({ 
+            image: imageSrc, 
+            model: engineKey,
+            params: engineConfigs[engineKey]
+          })
         });
         
         const data = await response.json();
@@ -521,23 +936,44 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
 
       {/* 3D Karşılaştırma Motorları Seçici Listesi */}
       <div className="input-group">
-        <label className="input-label" style={{ fontSize: "0.7rem" }}>Kıyaslanacak 3D Motorları</label>
+        <label className="input-label" style={{ fontSize: "0.7rem" }}>Kıyaslanacak 3D Motorları (Seçim Sıranıza Göre Ardışık Çalışır)</label>
         <div className={styles.checklistContainer}>
-          {Object.keys(ENGINES).map((key) => (
-            <label key={key} className={styles.checklistItem}>
-              <input
-                type="checkbox"
-                checked={selectedEngines.includes(key)}
-                onChange={() => onToggleEngine(key)}
-                disabled={isLoading}
-              />
-              <span style={{ fontWeight: selectedEngines.includes(key) ? 600 : 400 }}>
-                {ENGINES[key].name}
-              </span>
-            </label>
-          ))}
+          {Object.keys(ENGINES).map((key) => {
+            const queueIndex = selectedEngines.indexOf(key);
+            return (
+              <label key={key} className={styles.checklistItem}>
+                <input
+                  type="checkbox"
+                  checked={selectedEngines.includes(key)}
+                  onChange={() => onToggleEngine(key)}
+                  disabled={isLoading}
+                />
+                <span style={{ fontWeight: selectedEngines.includes(key) ? 600 : 400 }}>
+                  {ENGINES[key].name} {queueIndex !== -1 && <span style={{ color: "var(--accent-indigo)", fontSize: "0.75rem", fontWeight: "bold", marginLeft: "0.25rem" }}>({queueIndex + 1})</span>}
+                </span>
+              </label>
+            );
+          })}
         </div>
       </div>
+
+      {/* Seçilen Her Motorun Gelişmiş Ayar Kartı */}
+      {selectedEngines.length > 0 && (
+        <div className="input-group">
+          <label className="input-label" style={{ fontSize: "0.7rem" }}>Seçili Motor Parametreleri</label>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "320px", overflowY: "auto", paddingRight: "0.25rem", border: "1px dashed rgba(255,255,255,0.05)", padding: "0.4rem", borderRadius: "6px" }}>
+            {selectedEngines.map((key, idx) => renderEngineConfigCard(key, idx + 1))}
+          </div>
+          {/* Toplam Süre Bilgilendirmesi */}
+          <div className={styles.queueTimeBanner}>
+            ⏳ <strong>Tahmini Toplam Süre:</strong> {calculateTotalEstimatedTime()}
+            <br />
+            <span style={{ fontSize: "0.65rem", opacity: 0.85, display: "inline-block", marginTop: "0.15rem" }}>
+              * Motorlar sırayla (ardışık) çalışarak belleği boşaltır, çökme önlenir.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Giriş Sekmeleri */}
       {currentStep === 0 && (
