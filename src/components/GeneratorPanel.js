@@ -93,7 +93,7 @@ const ENGINES = {
   }
 };
 
-export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selectedEngines = ["triposr", "instantmesh"], onToggleEngine }) {
+export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selectedEngines = [], onToggleEngine }) {
   // Akış ve Poligon Seçenekleri
   const [flowMode, setFlowMode] = useState("manual"); // "manual" veya "auto"
   const [polygonType, setPolygonType] = useState("triangle"); // "triangle" veya "quad"

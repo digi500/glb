@@ -98,8 +98,8 @@ export default function Home() {
   const [refImageUrl, setRefImageUrl] = useState("");
   const [visibleSpecs, setVisibleSpecs] = useState({});
 
-  // Seçilen Kıyaslama Motorları (Varsayılan olarak ilk iki motor)
-  const [selectedEngines, setSelectedEngines] = useState(["triposr", "instantmesh"]);
+  // Seçilen Kıyaslama Motorları (Varsayılan olarak boş liste)
+  const [selectedEngines, setSelectedEngines] = useState([]);
 
   // 10 Motorun durum yönetimi
   const [modelsState, setModelsState] = useState({
