@@ -115,7 +115,7 @@ export default function Home() {
             )}
           </div>
 
-          <div style={{ flex: 1, position: "relative", marginTop: "0.5rem", display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1, position: "relative", marginTop: "0.5rem" }}>
             {modelUrl ? (
               <ThreeViewer src={modelUrl} fileSize={modelSize} />
             ) : (
