@@ -392,14 +392,13 @@ export default function GeneratorPanel({ onModelLoaded }) {
       )}
 
       {/* Akış Modu Seçici */}
-      <div className="input-group">
-        <label className="input-label">İşlem Akış Modu</label>
+      <div className="input-group" style={{ marginBottom: "1rem" }}>
         <div className={styles.aspectRatios}>
           <div
             className={`${styles.ratioOption} ${flowMode === "manual" ? styles.ratioOptionActive : ""}`}
             onClick={() => setFlowMode("manual")}
           >
-            ✋ Adım Adım (Onaylayarak)
+            ✋ Adım Adım
           </div>
           <div
             className={`${styles.ratioOption} ${flowMode === "auto" ? styles.ratioOptionActive : ""}`}
@@ -491,29 +490,6 @@ export default function GeneratorPanel({ onModelLoaded }) {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div className={styles.ornekResimlerTitle}>Örnek Görseller (Arka Plansız)</div>
-              <div className={styles.ornekGrid}>
-                {EXAMPLES.map((ex) => (
-                  <div
-                    key={ex.id}
-                    className={`${styles.ornekThumbnail} ${selectedExample?.id === ex.id ? styles.ornekThumbnailActive : ""}`}
-                    onClick={() => selectExample(ex)}
-                  >
-                    <img src={ex.path} alt={ex.label} />
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                veya kendi görselinizi yükleyin
-              </div>
-
-              <label className="dropzone">
-                <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: "none" }} />
-                <span>📤</span>
-                <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>Bilgisayardan Görsel Seç</span>
-              </label>
-
               {(uploadedImageBase64 || selectedExample) && (
                 <div className={styles.imageFlow}>
                   <div className={styles.imageBox} style={{ width: "100%", aspectRatio: "1" }}>
@@ -543,6 +519,31 @@ export default function GeneratorPanel({ onModelLoaded }) {
                   )}
                 </div>
               )}
+
+              <div className={styles.ornekResimlerTitle}>
+                {(uploadedImageBase64 || selectedExample) ? "Görseli Değiştir veya Farklı Seç:" : "Örnek Görseller (Arka Plansız)"}
+              </div>
+              <div className={styles.ornekGrid}>
+                {EXAMPLES.map((ex) => (
+                  <div
+                    key={ex.id}
+                    className={`${styles.ornekThumbnail} ${selectedExample?.id === ex.id ? styles.ornekThumbnailActive : ""}`}
+                    onClick={() => selectExample(ex)}
+                  >
+                    <img src={ex.path} alt={ex.label} />
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                veya kendi görselinizi yükleyin
+              </div>
+
+              <label className="dropzone">
+                <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: "none" }} />
+                <span>📤</span>
+                <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>Bilgisayardan Görsel Seç</span>
+              </label>
             </div>
           )}
         </div>
