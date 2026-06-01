@@ -8,6 +8,7 @@ export default function ThreeViewer({ src, fileSize, referenceImage }) {
   const [stats, setStats] = useState({ triangles: 0, vertices: 0 });
   const [isWireframe, setIsWireframe] = useState(false);
   const [isAutoRotate, setIsAutoRotate] = useState(true);
+  const [isRefExpanded, setIsRefExpanded] = useState(true);
 
   // Clear stats when src changes
   useEffect(() => {
@@ -127,16 +128,35 @@ export default function ThreeViewer({ src, fileSize, referenceImage }) {
     <div className={styles.viewerContainer}>
       {/* Referans Görsel Kartı */}
       {referenceImage && (
-        <div className={styles.referenceImageCard}>
-          <img src={referenceImage} alt="Referans" />
-          <div className={styles.referenceImageBadge}>Referans</div>
-        </div>
+        isRefExpanded ? (
+          <div className={styles.referenceImageCardExpanded}>
+            <img src={referenceImage} alt="Referans" />
+            <button 
+              className={styles.referenceImageCloseBadge} 
+              onClick={() => setIsRefExpanded(false)}
+              title="Referansı Gizle"
+            >
+              ✕
+            </button>
+            <div className={styles.referenceImageBadge}>Referans</div>
+          </div>
+        ) : (
+          <button 
+            className={styles.referenceImageToggleButton} 
+            onClick={() => setIsRefExpanded(true)}
+            title="Referans Görseli Göster"
+          >
+            🖼️ Referans
+          </button>
+        )
       )}
 
       <model-viewer
         ref={viewerRef}
         src={src}
         camera-controls
+        min-camera-orbit="auto 10deg auto"
+        max-camera-orbit="auto 95deg auto"
         auto-rotate={isAutoRotate ? "" : undefined}
         shadow-intensity="1"
         environment-image="neutral"

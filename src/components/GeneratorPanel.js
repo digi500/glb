@@ -392,8 +392,8 @@ export default function GeneratorPanel({ onModelLoaded }) {
       )}
 
       {/* Akış Modu Seçici */}
-      <div className="input-group" style={{ marginBottom: "1rem" }}>
-        <div className={styles.aspectRatios}>
+      <div className="input-group" style={{ marginBottom: "0.5rem" }}>
+        <div className={styles.flowModeGrid}>
           <div
             className={`${styles.ratioOption} ${flowMode === "manual" ? styles.ratioOptionActive : ""}`}
             onClick={() => setFlowMode("manual")}

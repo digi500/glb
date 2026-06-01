@@ -91,19 +91,30 @@
 /* Sayfa Yerleşimi */
 .mainLayout {
   display: grid;
-  grid-template-columns: 430px 1fr;
+  grid-template-columns: 345px 1fr;
   gap: 1.25rem;
-  align-items: start;
+  align-items: stretch;
   flex: 1;
 }
 
 /* Sol Panel (Sidebar) */
 .sidebar {
-  padding: 1.25rem;
+  padding: 0.8rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.6rem;
   position: relative;
+  height: 600px;
+  overflow-y: auto;
+}
+
+/* Compact layout for inputs and dropzone in sidebar */
+.sidebar :global(.input-group) {
+  margin-bottom: 0.5rem;
+}
+
+.sidebar :global(.dropzone) {
+  padding: 1rem 0.8rem;
 }
 
 .sectionTitle {
@@ -549,36 +560,83 @@
   margin-top: 0.35rem;
 }
 
-/* Yüzen Referans Görsel Kartı */
-.referenceImageCard {
+/* Yüzen Referans Görsel Kartı (Genişletilmiş) */
+.referenceImageCardExpanded {
   position: absolute;
   top: 0.75rem;
   left: 0.75rem;
-  width: 90px;
-  height: 90px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-  background: rgba(11, 15, 25, 0.95);
-  padding: 0.25rem;
-  z-index: 5;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  width: 180px;
+  height: 180px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(99, 102, 241, 0.4);
+  background: rgba(11, 15, 25, 0.96);
+  padding: 0.4rem;
+  z-index: 10;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.8);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-color: rgba(99, 102, 241, 0.3);
-  transition: transform 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-.referenceImageCard:hover {
-  transform: scale(1.08);
-}
-
-.referenceImageCard img {
+.referenceImageCardExpanded img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 4px;
+  border-radius: 6px;
+}
+
+.referenceImageCloseBadge {
+  position: absolute;
+  top: -0.5rem;
+  right: -0.5rem;
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  transition: background 0.15s ease, transform 0.15s ease;
+  z-index: 12;
+}
+
+.referenceImageCloseBadge:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+.referenceImageToggleButton {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  background: rgba(11, 15, 25, 0.9);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(6px);
+  color: #ffffff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.referenceImageToggleButton:hover {
+  border-color: var(--accent-indigo);
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .referenceImageBadge {
@@ -593,4 +651,12 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* 2 Sütunlu Buton Izgarası */
+.flowModeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  width: 100%;
 }

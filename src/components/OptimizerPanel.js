@@ -125,7 +125,7 @@ export default function OptimizerPanel({ onModelLoaded }) {
 
       <hr style={{ border: "none", borderTop: "1px solid var(--border-color)", margin: "0.5rem 0" }} />
 
-      <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
         <div className={styles.sectionTitle}>Optimizasyon Ayarları</div>
 
         {/* Ratio Slider */}
