@@ -409,27 +409,6 @@ export default function GeneratorPanel({ onModelLoaded }) {
         </div>
       </div>
 
-      {/* Adım Durum Göstergesi */}
-      {flowMode === "manual" && (uploadedImageBase64 || selectedExample) && (
-        <div style={{ background: "rgba(255,255,255,0.02)", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", fontSize: "0.8rem" }}>
-          <div style={{ fontWeight: 600, marginBottom: "0.4rem" }}>Aktif Aşama Durumu:</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-            <div style={{ color: currentStep >= 0 ? "var(--accent-indigo)" : "var(--text-muted)" }}>
-              {currentStep >= 0 ? "✓" : "○"} 1. Görsel Kaynağı Hazır
-            </div>
-            <div style={{ color: currentStep >= 1 ? "var(--accent-indigo)" : "var(--text-muted)" }}>
-              {currentStep >= 1 ? "✓" : "○"} 2. Arka Plan Kaldırıldı {currentStep === 0 && "👈 (Onay Bekliyor)"}
-            </div>
-            <div style={{ color: currentStep >= 2 ? "var(--accent-indigo)" : "var(--text-muted)" }}>
-              {currentStep >= 2 ? "✓" : "○"} 3. 3D Model Taslağı Hazır {currentStep === 1 && "👈 (Onay Bekliyor)"}
-            </div>
-            <div style={{ color: currentStep >= 3 ? "var(--accent-indigo)" : "var(--text-muted)" }}>
-              {currentStep >= 3 ? "✓" : "○"} 4. Model Optimize Edildi {currentStep === 2 && "👈 (Onay Bekliyor)"}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Giriş Sekmeleri */}
       {currentStep === 0 && (
         <div className={styles.tabContainer} style={{ margin: 0, width: "100%" }}>
@@ -670,6 +649,27 @@ export default function GeneratorPanel({ onModelLoaded }) {
           <button className="btn btn-secondary" onClick={handleResetFlow} style={{ width: "100%" }}>
             🔄 Yeni Model Üret
           </button>
+        </div>
+      )}
+
+      {/* Adım Durum Göstergesi (Alt Bölüm) */}
+      {flowMode === "manual" && (uploadedImageBase64 || selectedExample) && (
+        <div style={{ marginTop: "1.5rem", background: "rgba(255,255,255,0.02)", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", fontSize: "0.8rem" }}>
+          <div style={{ fontWeight: 600, marginBottom: "0.4rem" }}>Aktif Aşama Durumu:</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            <div style={{ color: currentStep >= 0 ? "var(--accent-indigo)" : "var(--text-muted)" }}>
+              {currentStep >= 0 ? "✓" : "○"} 1. Görsel Kaynağı Hazır
+            </div>
+            <div style={{ color: currentStep >= 1 ? "var(--accent-indigo)" : "var(--text-muted)" }}>
+              {currentStep >= 1 ? "✓" : "○"} 2. Arka Plan Kaldırıldı {currentStep === 0 && "👈 (Onay Bekliyor)"}
+            </div>
+            <div style={{ color: currentStep >= 2 ? "var(--accent-indigo)" : "var(--text-muted)" }}>
+              {currentStep >= 2 ? "✓" : "○"} 3. 3D Model Taslağı Hazır {currentStep === 1 && "👈 (Onay Bekliyor)"}
+            </div>
+            <div style={{ color: currentStep >= 3 ? "var(--accent-indigo)" : "var(--text-muted)" }}>
+              {currentStep >= 3 ? "✓" : "○"} 4. Model Optimize Edildi {currentStep === 2 && "👈 (Onay Bekliyor)"}
+            </div>
+          </div>
         </div>
       )}
     </div>
