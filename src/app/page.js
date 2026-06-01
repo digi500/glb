@@ -10,11 +10,13 @@ import pkg from "../../package.json";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("generator"); // "generator" or "optimizer"
-  const [modelUrl, setModelUrl] = useState("");
-  const [modelSize, setModelSize] = useState(0);
-  const [refImageUrl, setRefImageUrl] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [localServerUrl, setLocalServerUrl] = useState("http://localhost:5000");
+  const [refImageUrl, setRefImageUrl] = useState("");
+
+  // İki farklı modelin durum bilgileri
+  const [triposrModel, setTriposrModel] = useState({ url: "", size: 0, loading: false, error: "" });
+  const [instantmeshModel, setInstantmeshModel] = useState({ url: "", size: 0, loading: false, error: "" });
 
   const checkSettings = () => {
     if (typeof window !== "undefined") {
@@ -31,17 +33,30 @@ export default function Home() {
     };
   }, []);
 
-  const handleModelLoaded = (url, size, refImage) => {
-    setModelUrl(url);
-    setModelSize(size);
-    setRefImageUrl(refImage || "");
+  const handleModelLoaded = (url, size, refImage, modelType = "triposr", error = "") => {
+    if (modelType === "triposr") {
+      setTriposrModel({ url, size, loading: false, error });
+    } else if (modelType === "instantmesh") {
+      setInstantmeshModel({ url, size, loading: false, error });
+    }
+    if (refImage) {
+      setRefImageUrl(refImage);
+    }
   };
 
-  const handleDownload = () => {
-    if (!modelUrl) return;
+  const handleStartGeneration = (modelType) => {
+    if (modelType === "triposr") {
+      setTriposrModel(prev => ({ ...prev, url: "", size: 0, loading: true, error: "" }));
+    } else if (modelType === "instantmesh") {
+      setInstantmeshModel(prev => ({ ...prev, url: "", size: 0, loading: true, error: "" }));
+    }
+  };
+
+  const triggerDownload = (url, filename) => {
+    if (!url) return;
     const a = document.createElement("a");
-    a.href = modelUrl;
-    a.download = activeTab === "optimizer" ? "optimized_model.glb" : "ai_generated_model.glb";
+    a.href = url;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -75,8 +90,8 @@ export default function Home() {
           className={`${styles.tab} ${activeTab === "generator" ? styles.activeTab : ""}`}
           onClick={() => {
             setActiveTab("generator");
-            setModelUrl(""); // Reset model when switching tabs
-            setModelSize(0);
+            setTriposrModel({ url: "", size: 0, loading: false, error: "" });
+            setInstantmeshModel({ url: "", size: 0, loading: false, error: "" });
             setRefImageUrl("");
           }}
         >
@@ -86,8 +101,8 @@ export default function Home() {
           className={`${styles.tab} ${activeTab === "optimizer" ? styles.activeTab : ""}`}
           onClick={() => {
             setActiveTab("optimizer");
-            setModelUrl(""); // Reset model when switching tabs
-            setModelSize(0);
+            setTriposrModel({ url: "", size: 0, loading: false, error: "" });
+            setInstantmeshModel({ url: "", size: 0, loading: false, error: "" });
             setRefImageUrl("");
           }}
         >
@@ -99,19 +114,19 @@ export default function Home() {
       <div className={styles.mainLayout}>
         {/* Left Side Controls */}
         {activeTab === "generator" ? (
-          <GeneratorPanel onModelLoaded={handleModelLoaded} />
+          <GeneratorPanel onModelLoaded={handleModelLoaded} onStartGeneration={handleStartGeneration} />
         ) : (
-          <OptimizerPanel onModelLoaded={handleModelLoaded} />
+          <OptimizerPanel onModelLoaded={(url, size) => handleModelLoaded(url, size, null, "triposr")} />
         )}
 
         {/* Right Side 3D Previewer */}
         <div className={`${styles.showcase} panel`}>
           <div className={styles.sectionTitle}>
-            🖥️ 3D Model Önizleme
-            {modelUrl && (
+            🖥️ {activeTab === "generator" ? "3D Model Karşılaştırma Stüdyosu" : "3D Model Önizleme"}
+            {activeTab === "optimizer" && triposrModel.url && (
               <button 
                 className="btn btn-primary" 
-                onClick={handleDownload}
+                onClick={() => triggerDownload(triposrModel.url, "optimized_model.glb")}
                 style={{ marginLeft: "auto", padding: "0.4rem 1rem", fontSize: "0.85rem" }}
               >
                 💾 Modeli İndir (.GLB)
@@ -119,34 +134,98 @@ export default function Home() {
             )}
           </div>
 
-          <div style={{ flex: 1, position: "relative", marginTop: "0.5rem" }}>
-            {modelUrl ? (
-              <ThreeViewer src={modelUrl} fileSize={modelSize} referenceImage={refImageUrl} />
+          <div style={{ flex: 1, position: "relative", marginTop: "0.5rem", height: "100%" }}>
+            {activeTab === "generator" ? (
+              // Generator sekmesinde eğer modeller yükleniyorsa ya da yüklenmişse karşılaştırma tablosu göster
+              (triposrModel.url || triposrModel.loading || triposrModel.error || instantmeshModel.url || instantmeshModel.loading || instantmeshModel.error) ? (
+                <div className={styles.previewGrid}>
+                  {/* Sol Sütun: TripoSR */}
+                  <div className={styles.previewColumn}>
+                    <div className={styles.previewHeader}>
+                      ⚡ TripoSR (Hızlı - Köşe Renkli)
+                      {triposrModel.url && (
+                        <button 
+                          className="btn btn-secondary"
+                          onClick={() => triggerDownload(triposrModel.url, "triposr_model.glb")}
+                          style={{ marginLeft: "auto", padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}
+                        >
+                          💾 İndir
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, position: "relative" }}>
+                      {triposrModel.loading ? (
+                        <div className={styles.previewPlaceholder}>
+                          <div className="spinner"></div>
+                          <div>TripoSR modeli oluşturuluyor...</div>
+                        </div>
+                      ) : triposrModel.error ? (
+                        <div className={styles.previewPlaceholderError}>
+                          ❌ Hata: {triposrModel.error}
+                        </div>
+                      ) : triposrModel.url ? (
+                        <ThreeViewer src={triposrModel.url} fileSize={triposrModel.size} referenceImage={refImageUrl} />
+                      ) : (
+                        <div className={styles.previewPlaceholder}>Bekleniyor...</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Sağ Sütun: InstantMesh / Dokulu */}
+                  <div className={styles.previewColumn}>
+                    <div className={styles.previewHeader}>
+                      💎 InstantMesh (Doku Pişirmeli)
+                      {instantmeshModel.url && (
+                        <button 
+                          className="btn btn-secondary"
+                          onClick={() => triggerDownload(instantmeshModel.url, "instantmesh_model.glb")}
+                          style={{ marginLeft: "auto", padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}
+                        >
+                          💾 İndir
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, position: "relative" }}>
+                      {instantmeshModel.loading ? (
+                        <div className={styles.previewPlaceholder}>
+                          <div className="spinner"></div>
+                          <div>InstantMesh modeli oluşturuluyor...</div>
+                        </div>
+                      ) : instantmeshModel.error ? (
+                        <div className={styles.previewPlaceholderError}>
+                          ❌ Hata: {instantmeshModel.error}
+                        </div>
+                      ) : instantmeshModel.url ? (
+                        <ThreeViewer src={instantmeshModel.url} fileSize={instantmeshModel.size} referenceImage={null} />
+                      ) : (
+                        <div className={styles.previewPlaceholder}>Bekleniyor...</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Başlangıç Karşılama Ekranı
+                <div className={styles.welcomeBox}>
+                  <div style={{ fontSize: "3rem" }}>✨</div>
+                  <h3>Yerel 3D Stüdyosu</h3>
+                  <p style={{ color: "var(--text-muted)", maxWidth: "450px", fontSize: "0.9rem" }}>
+                    Bu stüdyo bilgisayarınızdaki yerel GPU sunucusunu ({localServerUrl}) kullanır. Başlamak için arka planda yerel sunucuyu çalıştırın, ardından sol panelden bir örnek görsel seçerek veya prompt yazıp görsel üreterek 3D üretimini başlatın.
+                  </p>
+                </div>
+              )
             ) : (
-              <div 
-                style={{ 
-                  height: "100%", 
-                  display: "flex", 
-                  flexDirection: "column", 
-                  alignItems: "center", 
-                  justifyContent: "center",
-                  background: "#0a0812",
-                  borderRadius: "12px",
-                  border: "1px dashed var(--border-color)",
-                  padding: "2rem",
-                  textAlign: "center",
-                  gap: "1rem"
-                }}
-              >
-                <div style={{ fontSize: "3rem" }}>✨</div>
-                <h3>Yerel 3D Stüdyosu</h3>
-                <p style={{ color: "var(--text-muted)", maxWidth: "450px", fontSize: "0.9rem" }}>
-                  {activeTab === "generator" 
-                    ? `Bu stüdyo bilgisayarınızdaki yerel GPU sunucusunu (${localServerUrl}) kullanır. Başlamak için arka planda yerel sunucuyu çalıştırın, ardından sol panelden bir örnek görsel seçerek veya prompt yazıp görsel üreterek '3D GLB Model Üret' seçeneğini tıklayın.`
-                    : "Bilgisayarınızdaki herhangi bir .glb dosyasını sol tarafa yükleyin, ardından poligon azaltma (decimation) oranlarını ayarlayarak yerel Blender ile saniyeler içinde ücretsiz optimize edin."
-                  }
-                </p>
-              </div>
+              // Optimizer sekmesinde tek model önizleme
+              triposrModel.url ? (
+                <ThreeViewer src={triposrModel.url} fileSize={triposrModel.size} />
+              ) : (
+                <div className={styles.welcomeBox}>
+                  <div style={{ fontSize: "3rem" }}>⚡</div>
+                  <h3>GLB Optimizasyon Modu</h3>
+                  <p style={{ color: "var(--text-muted)", maxWidth: "450px", fontSize: "0.9rem" }}>
+                    Bilgisayarınızdaki herhangi bir .glb dosyasını sol tarafa yükleyin, ardından poligon azaltma (decimation) oranlarını ayarlayarak yerel Blender ile saniyeler içinde ücretsiz optimize edin.
+                  </p>
+                </div>
+              )
             )}
           </div>
         </div>

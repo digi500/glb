@@ -10,7 +10,7 @@ const EXAMPLES = [
   { id: "modern", label: "Modern", path: "/ornek_resimler/modern_transparent.png" }
 ];
 
-export default function GeneratorPanel({ onModelLoaded }) {
+export default function GeneratorPanel({ onModelLoaded, onStartGeneration }) {
   // Akış ve Poligon Seçenekleri
   const [flowMode, setFlowMode] = useState("manual"); // "manual" veya "auto"
   const [polygonType, setPolygonType] = useState("triangle"); // "triangle" veya "quad"
@@ -100,7 +100,8 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setRemovedBgImage("");
     setGeneratedGlbUrl("");
     setCurrentStep(0);
-    onModelLoaded("", 0, "");
+    onModelLoaded("", 0, "", "triposr");
+    onModelLoaded("", 0, "", "instantmesh");
     
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -115,7 +116,8 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setGeneratedGlbUrl("");
     setSelectedExample(ex);
     setCurrentStep(0);
-    onModelLoaded("", 0, "");
+    onModelLoaded("", 0, "", "triposr");
+    onModelLoaded("", 0, "", "instantmesh");
   };
 
   // AŞAMA 1: Görsel Üretimi (Yazıdan Görsele)
@@ -125,7 +127,8 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setStatus("Yerel ekran kartınız görseli üretiyor...");
     setLogs("Stable Diffusion / ComfyUI çalıştırılıyor...");
     startProgress(8); // Görsel üretimi için tahmini 8 saniye
-    onModelLoaded("", 0, "");
+    onModelLoaded("", 0, "", "triposr");
+    onModelLoaded("", 0, "", "instantmesh");
 
     const localUrl = getLocalUrl();
 
@@ -242,49 +245,87 @@ export default function GeneratorPanel({ onModelLoaded }) {
     await run3DGeneration(inputImage);
   };
 
-  // 3D Model Üretimi İşlemi
+  // 3D Model Üretimi İşlemi (Çift model ardışık üretimi)
   const run3DGeneration = async (imageSrc) => {
-    setStatus("Yerel yapay zeka 3D modeli örüyor...");
-    setLogs(`${localModel.toUpperCase()} modeli çalıştırılıyor. Bu işlem biraz sürebilir...`);
-    
-    // TripoSR GPU üzerinde ortalama 45 saniye sürer
-    const estimatedTime = localModel === "triposr" ? 45 : 60;
-    startProgress(estimatedTime);
-
+    setIsLoading(true);
     const localUrl = getLocalUrl();
+    const refImage = removedBgImage || uploadedImageBase64 || (selectedExample && selectedExample.path);
 
+    // Her iki model için yüklenme durumunu başlat
+    if (onStartGeneration) {
+      onStartGeneration("triposr");
+      onStartGeneration("instantmesh");
+    }
+
+    let triposrBlob = null;
+    let triposrUrl = "";
+
+    // 1. ADIM: TripoSR Üretimi
     try {
+      setStatus("1/2: TripoSR 3D modeli örülüyor...");
+      setLogs("TripoSR yerel motoru çalıştırılıyor...");
+      startProgress(45); // TripoSR için tahmini 45 saniye
+
       const response = await fetch(`${localUrl}/api/generate-3d`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: imageSrc, model: localModel })
+        body: JSON.stringify({ image: imageSrc, model: "triposr" })
       });
       
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "3D model üretilemedi.");
+      if (!response.ok) throw new Error(data.error || "TripoSR üretilemedi.");
 
       const glbRes = await fetch(data.glb);
-      const glbBlob = await glbRes.blob();
-      const rawGlbUrlLocal = URL.createObjectURL(glbBlob);
+      triposrBlob = await glbRes.blob();
+      triposrUrl = URL.createObjectURL(triposrBlob);
 
-      setGeneratedGlbUrl(rawGlbUrlLocal);
-      setGeneratedGlbSize(glbBlob.size);
-      setCurrentStep(2);
-      setStatus("3D model oluşturuldu! Optimizasyona geçebilirsiniz.");
-      stopProgress();
-      onModelLoaded(rawGlbUrlLocal, glbBlob.size, removedBgImage || uploadedImageBase64 || (selectedExample && selectedExample.path));
-
-      if (flowMode === "auto") {
-        runGlbOptimization(glbBlob);
-      }
+      onModelLoaded(triposrUrl, triposrBlob.size, refImage, "triposr");
     } catch (err) {
       console.error(err);
-      stopProgress();
-      alert(`3D model oluşturulamadı: ${err.message}. Lütfen yerel sunucunuzdaki konsol hata çıktılarını kontrol edin.`);
-      setStatus("3D model oluşturma hatası.");
-      setIsLoading(false);
-    } finally {
-      if (flowMode !== "auto") setIsLoading(false);
+      onModelLoaded("", 0, "", "triposr", err.message);
+    }
+
+    // 2. ADIM: InstantMesh Üretimi
+    let finalBlob = triposrBlob;
+    let finalUrl = triposrUrl;
+
+    try {
+      setStatus("2/2: InstantMesh 3D modeli örülüyor...");
+      setLogs("InstantMesh (Bake Texture) yerel motoru çalıştırılıyor...");
+      startProgress(60); // InstantMesh için tahmini 60 saniye
+
+      const response = await fetch(`${localUrl}/api/generate-3d`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: imageSrc, model: "instantmesh" })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "InstantMesh üretilemedi.");
+
+      const glbRes = await fetch(data.glb);
+      const instantmeshBlob = await glbRes.blob();
+      const instantmeshUrl = URL.createObjectURL(instantmeshBlob);
+
+      onModelLoaded(instantmeshUrl, instantmeshBlob.size, refImage, "instantmesh");
+      
+      finalBlob = instantmeshBlob;
+      finalUrl = instantmeshUrl;
+    } catch (err) {
+      console.error(err);
+      onModelLoaded("", 0, "", "instantmesh", err.message);
+    }
+
+    // Aşamayı sonlandır
+    stopProgress();
+    setIsLoading(false);
+    setCurrentStep(2);
+    setGeneratedGlbUrl(finalUrl);
+    setGeneratedGlbSize(finalBlob ? finalBlob.size : 0);
+    setStatus("Her iki model de başarıyla oluşturuldu!");
+
+    if (flowMode === "auto" && finalBlob) {
+      runGlbOptimization(finalBlob);
     }
   };
 

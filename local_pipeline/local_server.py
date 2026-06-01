@@ -199,9 +199,12 @@ def generate_3d():
         glb_filename = f"{uuid.uuid4()}.glb"
         glb_path = OUTPUT_DIR / glb_filename
 
+        # Yapay zeka model motorunu al
+        model_type = data.get("model", "triposr")
+
         # TripoSR yerel olarak kuruluysa doğrudan çalıştır
         if TSR_AVAILABLE:
-            print("[*] TripoSR Python API ile yerel olarak 3D model örülüyor...")
+            print(f"[*] TripoSR Python API ile yerel olarak 3D model örülüyor (Motor: {model_type})...")
             triposr_script = BASE_DIR / "TripoSR" / "run.py"
             if triposr_script.exists():
                 # Önceden gri zemini kendimiz hazırladığımız için --no-remove-bg ekledik
@@ -215,7 +218,21 @@ def generate_3d():
                     "glb",
                     "--no-remove-bg"
                 ]
-                subprocess.run(cmd, check=True)
+
+                # Eğer "instantmesh" seçildiyse yüksek kalite için doku pişirmeyi (bake texture) dene
+                if model_type == "instantmesh":
+                    cmd.append("--bake-texture")
+                    print("[*] Yüksek kaliteli doku üretimi (Texture Baking) aktif ediliyor...")
+
+                try:
+                    subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as e:
+                    if model_type == "instantmesh":
+                        print("[!] Doku pişirme başarısız oldu (xatlas eksik olabilir). Düz kaplama ile devam ediliyor...")
+                        cmd_fallback = [c for c in cmd if c != "--bake-texture"]
+                        subprocess.run(cmd_fallback, check=True)
+                    else:
+                        raise e
                 
                 # TripoSR çıktıları output-dir altında '0' klasörüne kaydeder (örn: output/0/mesh.glb)
                 generated_glb = OUTPUT_DIR / "0" / "mesh.glb"
