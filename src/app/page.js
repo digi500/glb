@@ -12,6 +12,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("generator"); // "generator" or "optimizer"
   const [modelUrl, setModelUrl] = useState("");
   const [modelSize, setModelSize] = useState(0);
+  const [refImageUrl, setRefImageUrl] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [localServerUrl, setLocalServerUrl] = useState("http://localhost:5000");
 
@@ -30,9 +31,10 @@ export default function Home() {
     };
   }, []);
 
-  const handleModelLoaded = (url, size) => {
+  const handleModelLoaded = (url, size, refImage) => {
     setModelUrl(url);
     setModelSize(size);
+    setRefImageUrl(refImage || "");
   };
 
   const handleDownload = () => {
@@ -75,6 +77,7 @@ export default function Home() {
             setActiveTab("generator");
             setModelUrl(""); // Reset model when switching tabs
             setModelSize(0);
+            setRefImageUrl("");
           }}
         >
           🔮 AI 3D Sandbox (Görsel → 3D)
@@ -85,6 +88,7 @@ export default function Home() {
             setActiveTab("optimizer");
             setModelUrl(""); // Reset model when switching tabs
             setModelSize(0);
+            setRefImageUrl("");
           }}
         >
           ⚡ Sadece GLB Optimize Et
@@ -117,7 +121,7 @@ export default function Home() {
 
           <div style={{ flex: 1, position: "relative", marginTop: "0.5rem" }}>
             {modelUrl ? (
-              <ThreeViewer src={modelUrl} fileSize={modelSize} />
+              <ThreeViewer src={modelUrl} fileSize={modelSize} referenceImage={refImageUrl} />
             ) : (
               <div 
                 style={{ 

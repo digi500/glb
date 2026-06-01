@@ -100,7 +100,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setRemovedBgImage("");
     setGeneratedGlbUrl("");
     setCurrentStep(0);
-    onModelLoaded("", 0);
+    onModelLoaded("", 0, "");
     
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -115,7 +115,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setGeneratedGlbUrl("");
     setSelectedExample(ex);
     setCurrentStep(0);
-    onModelLoaded("", 0);
+    onModelLoaded("", 0, "");
   };
 
   // AŞAMA 1: Görsel Üretimi (Yazıdan Görsele)
@@ -125,7 +125,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setStatus("Yerel ekran kartınız görseli üretiyor...");
     setLogs("Stable Diffusion / ComfyUI çalıştırılıyor...");
     startProgress(8); // Görsel üretimi için tahmini 8 saniye
-    onModelLoaded("", 0);
+    onModelLoaded("", 0, "");
 
     const localUrl = getLocalUrl();
 
@@ -247,8 +247,8 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setStatus("Yerel yapay zeka 3D modeli örüyor...");
     setLogs(`${localModel.toUpperCase()} modeli çalıştırılıyor. Bu işlem biraz sürebilir...`);
     
-    // TripoSR GPU üzerinde ortalama 15-20 saniye sürer
-    const estimatedTime = localModel === "triposr" ? 20 : 45;
+    // TripoSR GPU üzerinde ortalama 45 saniye sürer
+    const estimatedTime = localModel === "triposr" ? 45 : 60;
     startProgress(estimatedTime);
 
     const localUrl = getLocalUrl();
@@ -272,7 +272,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
       setCurrentStep(2);
       setStatus("3D model oluşturuldu! Optimizasyona geçebilirsiniz.");
       stopProgress();
-      onModelLoaded(rawGlbUrlLocal, glbBlob.size);
+      onModelLoaded(rawGlbUrlLocal, glbBlob.size, removedBgImage || uploadedImageBase64 || (selectedExample && selectedExample.path));
 
       if (flowMode === "auto") {
         runGlbOptimization(glbBlob);
@@ -342,7 +342,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
       setCurrentStep(3);
       setStatus("Model başarıyla optimize edildi!");
       stopProgress();
-      onModelLoaded(finalGlbUrl, finalSize);
+      onModelLoaded(finalGlbUrl, finalSize, removedBgImage || uploadedImageBase64 || (selectedExample && selectedExample.path));
     } catch (err) {
       console.error(err);
       stopProgress();
@@ -364,7 +364,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setStatus("");
     setLogs("");
     setProgress(0);
-    onModelLoaded("", 0);
+    onModelLoaded("", 0, "");
   };
 
   return (
@@ -556,20 +556,21 @@ export default function GeneratorPanel({ onModelLoaded }) {
 
       {/* Adım 2: 3D Model Taslağı */}
       {currentStep === 2 && (
-        <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <div className={styles.sectionTitle}>Adım 3: Ham 3D Model Hazır</div>
+        <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "0.8rem", textAlign: "left" }}>
+          <h4 style={{ fontSize: "0.95rem", fontWeight: 600, color: "#ffffff", margin: 0 }}>Ham 3D Model Hazır</h4>
           
-          <div style={{ background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "0.75rem", borderRadius: "6px", fontSize: "0.8rem" }}>
-            Model boyutu: <strong>{(generatedGlbSize / 1024 / 1024).toFixed(2)} MB</strong>
+          <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: "0.1rem 0" }}>
+            Boyut: <strong style={{ color: "var(--accent-cyan)" }}>{(generatedGlbSize / 1024 / 1024).toFixed(2)} MB</strong>
           </div>
 
           {/* Yerel Motor Seçimi */}
           <div className="input-group">
-            <label className="input-label">Yerel Yapay Zeka Motoru</label>
+            <label className="input-label" style={{ fontSize: "0.75rem", textTransform: "none", color: "var(--text-muted)" }}>Yapay Zeka Motoru</label>
             <select
               className="input-text"
               value={localModel}
               onChange={(e) => setLocalModel(e.target.value)}
+              style={{ fontSize: "0.8rem", padding: "0.4rem" }}
             >
               <option value="triposr">TripoSR (Hızlı - 1660 için Önerilen)</option>
               <option value="instantmesh">InstantMesh (Çoklu Açı - Yüksek Kalite)</option>
@@ -578,62 +579,58 @@ export default function GeneratorPanel({ onModelLoaded }) {
 
           {/* Poligon Tipi Seçimi */}
           <div className="input-group">
-            <label className="input-label">Poligon Yapı Tipi</label>
-            <div className={styles.aspectRatios}>
+            <label className="input-label" style={{ fontSize: "0.75rem", textTransform: "none", color: "var(--text-muted)" }}>Poligon Yapı Tipi</label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.4rem" }}>
               <div
                 className={`${styles.ratioOption} ${polygonType === "triangle" ? styles.ratioOptionActive : ""}`}
                 onClick={() => setPolygonType("triangle")}
+                style={{ padding: "0.45rem", fontSize: "0.75rem" }}
               >
-                Üçgen (Oyun Uyumlu)
+                🔺 Üçgen
               </div>
               <div
                 className={`${styles.ratioOption} ${polygonType === "quad" ? styles.ratioOptionActive : ""}`}
                 onClick={() => setPolygonType("quad")}
+                style={{ padding: "0.45rem", fontSize: "0.75rem" }}
               >
-                Dörtgen (Blender)
+                ⬛ Dörtgen
               </div>
             </div>
           </div>
 
           <div className="input-group">
-            <label className="input-label">Mobil / Kalite Preseti</label>
+            <label className="input-label" style={{ fontSize: "0.75rem", textTransform: "none", color: "var(--text-muted)" }}>Mobil / Kalite Preseti</label>
             <div className={styles.presets}>
               <div
                 className={`${styles.presetCard} ${preset === "mobile" ? styles.presetCardActive : ""}`}
                 onClick={() => setPreset("mobile")}
+                style={{ padding: "0.45rem 0.6rem" }}
               >
-                <div>
-                  <div className={styles.presetName}>📱 Mobil Uyumlu (Düşük Poligon)</div>
-                  <div className={styles.presetDesc}>%85 Poligon Azaltma. Telefonlarda akıcı çalışır.</div>
-                </div>
+                <div className={styles.presetName}>📱 Mobil Uyumlu (%85 Azaltma)</div>
               </div>
               <div
                 className={`${styles.presetCard} ${preset === "desktop" ? styles.presetCardActive : ""}`}
                 onClick={() => setPreset("desktop")}
+                style={{ padding: "0.45rem 0.6rem" }}
               >
-                <div>
-                  <div className={styles.presetName}>💻 Masaüstü (Orta Poligon)</div>
-                  <div className={styles.presetDesc}>%50 Poligon Azaltma. Masaüstü ve render için uygundur.</div>
-                </div>
+                <div className={styles.presetName}>💻 Masaüstü (%50 Azaltma)</div>
               </div>
               <div
                 className={`${styles.presetCard} ${preset === "original" ? styles.presetCardActive : ""}`}
                 onClick={() => setPreset("original")}
+                style={{ padding: "0.45rem 0.6rem" }}
               >
-                <div>
-                  <div className={styles.presetName}>💎 Orijinal Kalite</div>
-                  <div className={styles.presetDesc}>Sıkıştırma ve poligon azaltma uygulanmaz.</div>
-                </div>
+                <div className={styles.presetName}>💎 Orijinal Kalite</div>
               </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleResetFlow}>
+          <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.4rem" }}>
+            <button className="btn btn-secondary" style={{ flex: 1, padding: "0.45rem", fontSize: "0.75rem" }} onClick={handleResetFlow}>
               Temizle
             </button>
-            <button className="btn btn-accent" style={{ flex: 2 }} onClick={handleOptimizationTrigger}>
-              ⚡ Modeli Onayla ve Optimize Et
+            <button className="btn btn-accent" style={{ flex: 1.8, padding: "0.45rem", fontSize: "0.75rem" }} onClick={handleOptimizationTrigger}>
+              ⚡ Optimize Et & Kaydet
             </button>
           </div>
         </div>

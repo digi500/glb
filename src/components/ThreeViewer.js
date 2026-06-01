@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import styles from "../app/Home.module.css";
 
-export default function ThreeViewer({ src, fileSize }) {
+export default function ThreeViewer({ src, fileSize, referenceImage }) {
   const viewerRef = useRef(null);
   const [stats, setStats] = useState({ triangles: 0, vertices: 0 });
   const [isWireframe, setIsWireframe] = useState(false);
@@ -125,6 +125,14 @@ export default function ThreeViewer({ src, fileSize }) {
 
   return (
     <div className={styles.viewerContainer}>
+      {/* Referans Görsel Kartı */}
+      {referenceImage && (
+        <div className={styles.referenceImageCard}>
+          <img src={referenceImage} alt="Referans" />
+          <div className={styles.referenceImageBadge}>Referans</div>
+        </div>
+      )}
+
       <model-viewer
         ref={viewerRef}
         src={src}
