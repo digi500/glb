@@ -337,6 +337,7 @@ def optimize_glb():
         file = request.files.get("file")
         ratio = float(request.form.get("ratio", "0.35"))
         polygon_type = request.form.get("polygon_type", "triangle")
+        target_face_count = request.form.get("target_face_count")
 
         if not file:
             return jsonify({"error": "GLB dosyası gereklidir."}), 400
@@ -357,6 +358,8 @@ def optimize_glb():
             if os.path.exists(alt_path) and not os.path.exists(blender_path):
                 blender_path = alt_path
 
+        target_face_count_val = f"int('{target_face_count}')" if (target_face_count and target_face_count.strip()) else "None"
+
         # Blender Python scripti
         blender_script = f"""
 import bpy
@@ -369,6 +372,8 @@ bpy.ops.object.delete(use_global=False)
 # GLB'yi içe aktar
 bpy.ops.import_scene.gltf(filepath=r"{input_path}")
 
+target_face_count = {target_face_count_val}
+
 # Modelleri sadeleştir
 meshes = [obj for obj in bpy.context.scene.objects if obj.type == 'MESH']
 for obj in meshes:
@@ -378,13 +383,20 @@ for obj in meshes:
     # Varsayılan Decimate poligon azaltma
     dec_mod = obj.modifiers.new(name="Decimate", type='DECIMATE')
     
-    if "{polygonType}" == "quad":
+    if "{polygon_type}" == "quad":
         # Dörtgen korumalı/oluşturmalı basit azaltma
         dec_mod.decimate_type = 'UNSUBDIVIDE'
         dec_mod.iterations = 2 # Hafif dörtgen azaltma basamağı
     else:
         # Standart hızlı üçgen azaltma (Oyunlar için en iyisi)
-        dec_mod.ratio = {ratio}
+        if target_face_count is not None:
+            face_count = len(obj.data.polygons)
+            if face_count > 0:
+                dec_mod.ratio = min(1.0, max(0.01, target_face_count / face_count))
+            else:
+                dec_mod.ratio = {ratio}
+        else:
+            dec_mod.ratio = {ratio}
         
     try:
         bpy.ops.object.modifier_apply(modifier="Decimate")

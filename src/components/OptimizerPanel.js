@@ -9,6 +9,8 @@ export default function OptimizerPanel({ onModelLoaded }) {
   const [error, setError] = useState(0.01); // Maximum error tolerance
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState("");
+  const [optimizationType, setOptimizationType] = useState("ratio"); // "ratio" veya "faces"
+  const [targetFaces, setTargetFaces] = useState(5000);
 
   const getSettings = () => {
     if (typeof window !== "undefined") {
@@ -47,8 +49,14 @@ export default function OptimizerPanel({ onModelLoaded }) {
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
-      formData.append("ratio", ratio.toString());
       formData.append("error", error.toString());
+
+      if (optimizationType === "faces") {
+        formData.append("ratio", "1.0");
+        formData.append("target_face_count", targetFaces.toString());
+      } else {
+        formData.append("ratio", ratio.toString());
+      }
 
       // API rotasını çalışma moduna göre seç
       const targetApi = mode === "local" ? `${localUrl}/api/optimize-glb` : "/api/optimize-glb";
@@ -128,28 +136,66 @@ export default function OptimizerPanel({ onModelLoaded }) {
       <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
         <div className={styles.sectionTitle}>Optimizasyon Ayarları</div>
 
-        {/* Ratio Slider */}
-        <div className={styles.rangeSliderContainer}>
-          <div className={styles.rangeSliderHeader}>
-            <span className={styles.statLabel}>Poligon Koruma Oranı</span>
-            <span className={styles.statValue} style={{ color: "var(--accent-purple)" }}>
-              {Math.round(ratio * 100)}%
+        <div className="input-group" style={{ marginBottom: "0.5rem" }}>
+          <label className="input-label" style={{ fontSize: "0.75rem", textTransform: "none", color: "var(--text-muted)" }}>Sadeleştirme Yöntemi</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.4rem" }}>
+            <div
+              className={`${styles.ratioOption} ${optimizationType === "ratio" ? styles.ratioOptionActive : ""}`}
+              onClick={() => setOptimizationType("ratio")}
+              style={{ padding: "0.4rem", fontSize: "0.75rem", textAlign: "center" }}
+            >
+              Oran (%) ile Sadeleştir
+            </div>
+            <div
+              className={`${styles.ratioOption} ${optimizationType === "faces" ? styles.ratioOptionActive : ""}`}
+              onClick={() => setOptimizationType("faces")}
+              style={{ padding: "0.4rem", fontSize: "0.75rem", textAlign: "center" }}
+            >
+              Hedef Poligon (Face) ile
+            </div>
+          </div>
+        </div>
+
+        {optimizationType === "ratio" ? (
+          /* Ratio Slider */
+          <div className={styles.rangeSliderContainer}>
+            <div className={styles.rangeSliderHeader}>
+              <span className={styles.statLabel}>Poligon Koruma Oranı</span>
+              <span className={styles.statValue} style={{ color: "var(--accent-purple)" }}>
+                {Math.round(ratio * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0.05"
+              max="1.00"
+              step="0.05"
+              value={ratio}
+              onChange={(e) => setRatio(parseFloat(e.target.value))}
+              className={styles.slider}
+              disabled={!selectedFile}
+            />
+            <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+              {ratio === 1 ? "Poligon azaltma uygulanmaz." : `Poligonların %${Math.round((1 - ratio) * 100)} kadarı silinecek.`}
             </span>
           </div>
-          <input
-            type="range"
-            min="0.05"
-            max="1.00"
-            step="0.05"
-            value={ratio}
-            onChange={(e) => setRatio(parseFloat(e.target.value))}
-            className={styles.slider}
-            disabled={!selectedFile}
-          />
-          <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-            {ratio === 1 ? "Poligon azaltma uygulanmaz." : `Poligonların %${Math.round((1 - ratio) * 100)} kadarı silinecek.`}
-          </span>
-        </div>
+        ) : (
+          /* Custom Target Faces Input */
+          <div className="input-group">
+            <label className="input-label">Hedef Poligon (Face Sayısı)</label>
+            <input
+              type="number"
+              className="input-text"
+              value={targetFaces}
+              onChange={(e) => setTargetFaces(parseInt(e.target.value) || 5000)}
+              disabled={!selectedFile}
+              style={{ padding: "0.4rem", fontSize: "0.85rem" }}
+            />
+            <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+              Blender modelin poligonlarını bu sayıya düşürmek için dinamik oran hesaplar.
+            </span>
+          </div>
+        )}
 
         {/* Error Slider */}
         <div className={styles.rangeSliderContainer}>

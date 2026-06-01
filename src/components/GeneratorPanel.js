@@ -103,7 +103,11 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [localModel, setLocalModel] = useState("triposr"); // "triposr" veya "instantmesh"
-  const [preset, setPreset] = useState("mobile"); // "mobile", "desktop", "original"
+  const [preset, setPreset] = useState("mobile"); // "mobile", "desktop", "custom", "original"
+  const [customRatio, setCustomRatio] = useState(0.35);
+  const [customTargetFaces, setCustomTargetFaces] = useState(5000);
+  const [optimizationType, setOptimizationType] = useState("ratio"); // "ratio" veya "faces"
+
   
   // Seçilen her motorun kendi özel konfigürasyonu
   const [engineConfigs, setEngineConfigs] = useState({
@@ -124,14 +128,12 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
       texture_resolution: 1024
     },
     hunyuan3d: {
-      inference_steps: 100,
-      octree_resolution: 512,
-      target_face_number: 999100,
-      simplify_mesh: false,
+      inference_steps: 30,
+      octree_resolution: 256,
       seed: 1234,
       randomize_seed: false,
-      guidance_scale: 14,
-      number_of_chunks: 100000
+      guidance_scale: 5,
+      number_of_chunks: 8000
     },
     sf3d: {
       texture_resolution: 1024,
@@ -461,58 +463,49 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
               <span className={styles.engineConfigLabel}>Randomize Seed</span>
             </div>
             <div className={styles.engineConfigRow}>
-              <span className={styles.engineConfigLabel}>İşlem Adımları (Steps):</span>
+              <span className={styles.engineConfigLabel}>İşlem Adımları (1-100):</span>
               <input
                 type="number"
+                min="1"
+                max="100"
                 className={styles.engineConfigInput}
                 value={config.inference_steps}
-                onChange={(e) => updateConfig(key, "inference_steps", parseInt(e.target.value) || 100)}
+                onChange={(e) => updateConfig(key, "inference_steps", Math.min(100, Math.max(1, parseInt(e.target.value) || 30)))}
               />
             </div>
             <div className={styles.engineConfigRow}>
-              <span className={styles.engineConfigLabel}>Hacim Çözünürlüğü:</span>
+              <span className={styles.engineConfigLabel}>Hacim Çözünürlüğü (64-512):</span>
               <input
                 type="number"
+                min="64"
+                max="512"
                 className={styles.engineConfigInput}
                 value={config.octree_resolution}
-                onChange={(e) => updateConfig(key, "octree_resolution", parseInt(e.target.value) || 512)}
+                onChange={(e) => updateConfig(key, "octree_resolution", Math.min(512, Math.max(64, parseInt(e.target.value) || 256)))}
               />
             </div>
             <div className={styles.engineConfigRow}>
-              <span className={styles.engineConfigLabel}>Guidance Scale:</span>
+              <span className={styles.engineConfigLabel}>Guidance Scale (1-20):</span>
               <input
                 type="number"
                 step="0.5"
+                min="1"
+                max="20"
                 className={styles.engineConfigInput}
                 value={config.guidance_scale}
-                onChange={(e) => updateConfig(key, "guidance_scale", parseFloat(e.target.value) || 14.0)}
+                onChange={(e) => updateConfig(key, "guidance_scale", Math.min(20, Math.max(1.0, parseFloat(e.target.value) || 5.0)))}
               />
             </div>
             <div className={styles.engineConfigRow}>
-              <span className={styles.engineConfigLabel}>Number of Chunks:</span>
+              <span className={styles.engineConfigLabel}>Chunks (1k - 4.9M):</span>
               <input
                 type="number"
+                min="1000"
+                max="4991000"
                 className={styles.engineConfigInput}
                 value={config.number_of_chunks}
-                onChange={(e) => updateConfig(key, "number_of_chunks", parseInt(e.target.value) || 100000)}
+                onChange={(e) => updateConfig(key, "number_of_chunks", Math.min(4991000, Math.max(1000, parseInt(e.target.value) || 8000)))}
               />
-            </div>
-            <div className={styles.engineConfigRow}>
-              <span className={styles.engineConfigLabel}>Hedef Poligon (Face):</span>
-              <input
-                type="number"
-                className={styles.engineConfigInput}
-                value={config.target_face_number}
-                onChange={(e) => updateConfig(key, "target_face_number", parseInt(e.target.value) || 999100)}
-              />
-            </div>
-            <div className={styles.engineConfigRow} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-              <input
-                type="checkbox"
-                checked={config.simplify_mesh}
-                onChange={(e) => updateConfig(key, "simplify_mesh", e.target.checked)}
-              />
-              <span className={styles.engineConfigLabel}>Ağı Sadeleştir</span>
             </div>
           </>
         )}
@@ -873,7 +866,6 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
     startProgress(5); // Blender işlemi için tahmini 5 saniye
 
     const localUrl = getLocalUrl();
-    const ratio = preset === "mobile" ? 0.15 : 0.50;
 
     try {
       let finalGlbUrl = generatedGlbUrl;
@@ -882,9 +874,16 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
       if (preset !== "original") {
         const formData = new FormData();
         formData.append("file", glbBlob, "model.glb");
-        formData.append("ratio", ratio.toString());
         formData.append("error", "0.01");
         formData.append("polygon_type", polygonType);
+
+        if (preset === "custom" && optimizationType === "faces") {
+          formData.append("ratio", "1.0");
+          formData.append("target_face_count", customTargetFaces.toString());
+        } else {
+          const finalRatio = preset === "custom" ? customRatio : (preset === "mobile" ? 0.15 : 0.50);
+          formData.append("ratio", finalRatio.toString());
+        }
 
         const optRes = await fetch(`${localUrl}/api/optimize-glb`, {
           method: "POST",
@@ -1212,24 +1211,87 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
                 onClick={() => setPreset("mobile")}
                 style={{ padding: "0.45rem 0.6rem" }}
               >
-                <div className={styles.presetName}>📱 Mobil Uyumlu (%85 Azaltma)</div>
+                <div className={styles.presetName}>📱 Mobil Uyumlu</div>
               </div>
               <div
                 className={`${styles.presetCard} ${preset === "desktop" ? styles.presetCardActive : ""}`}
                 onClick={() => setPreset("desktop")}
                 style={{ padding: "0.45rem 0.6rem" }}
               >
-                <div className={styles.presetName}>💻 Masaüstü (%50 Azaltma)</div>
+                <div className={styles.presetName}>💻 Masaüstü</div>
+              </div>
+              <div
+                className={`${styles.presetCard} ${preset === "custom" ? styles.presetCardActive : ""}`}
+                onClick={() => setPreset("custom")}
+                style={{ padding: "0.45rem 0.6rem" }}
+              >
+                <div className={styles.presetName}>⚙️ Özel Ayar</div>
               </div>
               <div
                 className={`${styles.presetCard} ${preset === "original" ? styles.presetCardActive : ""}`}
                 onClick={() => setPreset("original")}
                 style={{ padding: "0.45rem 0.6rem" }}
               >
-                <div className={styles.presetName}>💎 Orijinal Kalite</div>
+                <div className={styles.presetName}>💎 Orijinal</div>
               </div>
             </div>
           </div>
+
+          {preset === "custom" && (
+            <div className="fade-in" style={{ background: "rgba(255,255,255,0.02)", padding: "0.6rem", borderRadius: "6px", display: "flex", flexDirection: "column", gap: "0.6rem", border: "1px dashed rgba(255,255,255,0.1)", marginBottom: "0.5rem" }}>
+              <div className="input-group" style={{ margin: 0 }}>
+                <label className="input-label" style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "none" }}>Sadeleştirme Yöntemi</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.4rem" }}>
+                  <div
+                    className={`${styles.ratioOption} ${optimizationType === "ratio" ? styles.ratioOptionActive : ""}`}
+                    onClick={() => setOptimizationType("ratio")}
+                    style={{ padding: "0.3rem", fontSize: "0.7rem" }}
+                  >
+                    Oran (%)
+                  </div>
+                  <div
+                    className={`${styles.ratioOption} ${optimizationType === "faces" ? styles.ratioOptionActive : ""}`}
+                    onClick={() => setOptimizationType("faces")}
+                    style={{ padding: "0.3rem", fontSize: "0.7rem" }}
+                  >
+                    Hedef Poligon
+                  </div>
+                </div>
+              </div>
+
+              {optimizationType === "ratio" ? (
+                <div className="input-group" style={{ margin: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                    <span>Poligon Koruma Oranı:</span>
+                    <span style={{ color: "var(--accent-purple)", fontWeight: 600 }}>{Math.round(customRatio * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.05"
+                    max="1.00"
+                    step="0.05"
+                    value={customRatio}
+                    onChange={(e) => setCustomRatio(parseFloat(e.target.value))}
+                    className={styles.slider}
+                  />
+                </div>
+              ) : (
+                <div className="input-group" style={{ margin: 0 }}>
+                  <label className="input-label" style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Hedef Poligon (Face Sayısı)</label>
+                  <input
+                    type="number"
+                    className="input-text"
+                    style={{ padding: "0.3rem", fontSize: "0.8rem" }}
+                    value={customTargetFaces}
+                    onChange={(e) => setCustomTargetFaces(parseInt(e.target.value) || 5000)}
+                  />
+                  <span style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
+                    Blender model poligonlarını bu sayıya yaklaştırmak için oran hesaplayacaktır.
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.4rem" }}>
             <button className="btn btn-secondary" style={{ flex: 1, padding: "0.45rem", fontSize: "0.75rem" }} onClick={handleResetFlow}>
