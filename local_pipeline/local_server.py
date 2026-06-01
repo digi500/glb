@@ -10,7 +10,7 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 # Vercel'deki sitenizden veya localhost'tan gelen isteklere izin vermek için CORS aktif
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Klasör yolları
 BASE_DIR = Path(__file__).resolve().parent
@@ -183,20 +183,27 @@ def generate_3d():
                     str(triposr_script),
                     str(image_path),
                     "--output-dir",
-                    str(OUTPUT_DIR)
+                    str(OUTPUT_DIR),
+                    "--model-save-format",
+                    "glb"
                 ]
                 subprocess.run(cmd, check=True)
-                # TripoSR varsayılan olarak output-dir içinde mesh.obj veya mesh.glb oluşturur
-                # Onu bizim glb_path dosyasına taşıyalım/yeniden adlandıralım
-                generated_glb = OUTPUT_DIR / "mesh.glb"
+                
+                # TripoSR çıktıları output-dir altında '0' klasörüne kaydeder (örn: output/0/mesh.glb)
+                generated_glb = OUTPUT_DIR / "0" / "mesh.glb"
                 if generated_glb.exists():
-                    os.rename(generated_glb, glb_path)
+                    import shutil
+                    shutil.move(str(generated_glb), str(glb_path))
+                    # Geçici '0' alt klasörünü temizleyelim
+                    shutil.rmtree(str(OUTPUT_DIR / "0"), ignore_errors=True)
                 else:
-                    # Alternatif olarak obj oluşturduysa Blender ile GLB'ye çevireceğiz
-                    generated_obj = OUTPUT_DIR / "mesh.obj"
+                    # Alternatif olarak obj oluşturduysa kontrol et
+                    generated_obj = OUTPUT_DIR / "0" / "mesh.obj"
                     if generated_obj.exists():
-                        # Blender entegrasyonu tetiklenir
-                        pass
+                        # Burada bir obj dosyasını taşımayı veya hata vermeyi seçebiliriz
+                        return jsonify({"error": "TripoSR modeli beklenmeyen bir şekilde GLB yerine OBJ oluşturdu."}), 500
+                    else:
+                        return jsonify({"error": "TripoSR çıktısı 'mesh.glb' bulunamadı."}), 500
             else:
                 return jsonify({"error": "TripoSR 'run.py' dosyası local_pipeline/TripoSR altında bulunamadı."}), 500
         else:
