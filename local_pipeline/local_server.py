@@ -146,26 +146,51 @@ def generate_3d():
         if not image_data:
             return jsonify({"error": "Görsel gereklidir."}), 400
 
-        # Görseli diske kaydet
-        filename = f"{uuid.uuid4()}.png"
-        image_path = INPUT_DIR / filename
+        # Görseli diske kaydetmeden önce ön-işlemeden geçir (Gölgeleri sil ve gri arka plana yerleştir)
+        from PIL import Image
         
+        # Gelen görseli belleğe yükle
         if image_data.startswith("data:image"):
             header, encoded = image_data.split(",", 1)
             img_data = base64.b64decode(encoded)
-            with open(image_path, "wb") as f:
-                f.write(img_data)
+            img = Image.open(io.BytesIO(img_data))
         else:
             # Örnek görsel ise public klasöründen kopyala/oku
             if image_data.startswith("http"):
-                # URL ise ve localhost ise yerel diskten bulmaya çalış
                 path_part = image_data.split("/ornek_resimler/")[-1]
                 local_ex_path = BASE_DIR.parent / "public" / "ornek_resimler" / path_part
                 if local_ex_path.exists():
-                    import shutil
-                    shutil.copy(local_ex_path, image_path)
+                    img = Image.open(local_ex_path)
                 else:
                     return jsonify({"error": "Örnek görsel yerel diskte bulunamadı."}), 404
+            else:
+                return jsonify({"error": "Geçersiz görsel verisi."}), 400
+
+        # Akıllı Arka Plan ve Gölge Temizleme
+        img = img.convert("RGBA")
+        
+        # Eğer resim tamamen opak ise (hiç saydamlığı yoksa) rembg çalıştır
+        is_transparent = False
+        extrema = img.getextrema()
+        if len(extrema) >= 4 and extrema[3][0] < 255:
+            is_transparent = True
+            
+        if not is_transparent and REMBG_AVAILABLE:
+            print("[*] Görsel saydam değil, yerel rembg ile arka plan siliniyor...")
+            img = remove(img)
+            
+        # Yarı saydam gölgeleri filtrelemek için alpha kanalı eşikleme (thresholding)
+        r, g, b, a = img.split()
+        # Alpha değeri 150'nin altında kalan gölgeleri tamamen sıfırla
+        a = a.point(lambda p: 255 if p > 150 else 0)
+        img = Image.merge("RGBA", (r, g, b, a))
+        
+        # TripoSR'ın en iyi sonuç verdiği gri (128,128,128) arka plana yerleştir
+        gray_bg = Image.new("RGBA", img.size, (128, 128, 128, 255))
+        composited = Image.alpha_composite(gray_bg, img).convert("RGB")
+        
+        # Ön işlemden geçmiş görseli kaydet
+        composited.save(image_path, "PNG")
 
         # Çıkış GLB adı
         glb_filename = f"{uuid.uuid4()}.glb"
@@ -174,10 +199,9 @@ def generate_3d():
         # TripoSR yerel olarak kuruluysa doğrudan çalıştır
         if TSR_AVAILABLE:
             print("[*] TripoSR Python API ile yerel olarak 3D model örülüyor...")
-            # TripoSR kodunu çalıştır ve glb_path konumuna kaydet
-            # Basitlik ve hata önleme açısından CLI versiyonunu tetikliyoruz
             triposr_script = BASE_DIR / "TripoSR" / "run.py"
             if triposr_script.exists():
+                # Önceden gri zemini kendimiz hazırladığımız için --no-remove-bg ekledik
                 cmd = [
                     sys.executable,
                     str(triposr_script),
@@ -185,7 +209,8 @@ def generate_3d():
                     "--output-dir",
                     str(OUTPUT_DIR),
                     "--model-save-format",
-                    "glb"
+                    "glb",
+                    "--no-remove-bg"
                 ]
                 subprocess.run(cmd, check=True)
                 
@@ -200,7 +225,6 @@ def generate_3d():
                     # Alternatif olarak obj oluşturduysa kontrol et
                     generated_obj = OUTPUT_DIR / "0" / "mesh.obj"
                     if generated_obj.exists():
-                        # Burada bir obj dosyasını taşımayı veya hata vermeyi seçebiliriz
                         return jsonify({"error": "TripoSR modeli beklenmeyen bir şekilde GLB yerine OBJ oluşturdu."}), 500
                     else:
                         return jsonify({"error": "TripoSR çıktısı 'mesh.glb' bulunamadı."}), 500
