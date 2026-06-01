@@ -21,14 +21,16 @@ export default function ThreeViewer({ src, fileSize }) {
 
     const handleLoad = () => {
       try {
-        // Access model-viewer's internal Three.js scene
-        const model = viewer.model;
-        if (!model) return;
+        // Access model-viewer's internal Three.js scene using Symbol
+        const symbols = Object.getOwnPropertySymbols(viewer);
+        const sceneSymbol = symbols.find((s) => s.description === "scene");
+        const scene = sceneSymbol ? viewer[sceneSymbol] : null;
+        if (!scene) return;
 
         let triangles = 0;
         let vertices = 0;
 
-        model.scene.traverse((object) => {
+        scene.traverse((object) => {
           if (object.isMesh) {
             const geometry = object.geometry;
             if (geometry) {
