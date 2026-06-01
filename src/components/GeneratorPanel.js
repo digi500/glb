@@ -141,11 +141,11 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
     },
     unique3d: {
       mc_resolution: 416,
-      bake_texture: true
+      bake_texture: false
     },
     lgm: {
       mc_resolution: 256,
-      bake_texture: true,
+      bake_texture: false,
       texture_resolution: 1024
     },
     crm: {
@@ -155,12 +155,12 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
     },
     dreamgaussian: {
       mc_resolution: 224,
-      bake_texture: true,
+      bake_texture: false,
       texture_resolution: 2048
     },
     one2345: {
       mc_resolution: 320,
-      bake_texture: true
+      bake_texture: false
     }
   });
 

@@ -221,7 +221,7 @@ def generate_3d():
             if triposr_script.exists():
                 # Model tipine göre parametreleri dinamik özelleştir (resolution, texture-baking)
                 mc_resolution = params.get("mc_resolution")
-                bake_texture = params.get("bake_texture")
+                bake_texture = False # Her zaman dokusuz (Vertex Color) ham üretim yap
                 texture_resolution = params.get("texture_resolution")
 
                 # Eğer parametreler boş veya belirtilmemişse varsayılanları ata
