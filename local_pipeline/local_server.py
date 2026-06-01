@@ -149,6 +149,9 @@ def generate_3d():
         # Görseli diske kaydetmeden önce ön-işlemeden geçir (Gölgeleri sil ve gri arka plana yerleştir)
         from PIL import Image
         
+        filename = f"{uuid.uuid4()}.png"
+        image_path = INPUT_DIR / filename
+        
         # Gelen görseli belleğe yükle
         if image_data.startswith("data:image"):
             header, encoded = image_data.split(",", 1)
