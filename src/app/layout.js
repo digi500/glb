@@ -1,4 +1,5 @@
 import { Inter, Outfit } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -28,16 +29,14 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="tr" className={`${outfit.variable} ${inter.variable}`}>
-      <head>
-        {/* Load model-viewer script as a module */}
-        <script
-          type="module"
-          src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"
-          defer
-        />
-      </head>
+      <head />
       <body>
         {children}
+        <Script
+          src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"
+          type="module"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
