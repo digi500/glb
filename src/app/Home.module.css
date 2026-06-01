@@ -1,7 +1,7 @@
 .container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 1.25rem;
   width: 100%;
   flex: 1;
   display: flex;
@@ -13,7 +13,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--border-color);
 }
@@ -21,110 +21,101 @@
 .logoContainer {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
 }
 
 .logoIcon {
-  width: 36px;
-  height: 36px;
-  background: var(--grad-primary);
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  background: var(--accent-indigo);
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 1.25rem;
-  box-shadow: 0 4px 12px rgba(219, 39, 119, 0.3);
+  font-size: 1.1rem;
 }
 
 .logoText {
-  font-size: 1.5rem;
-  font-weight: 700;
-  background: linear-gradient(to right, #ffffff, #c084fc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #ffffff;
 }
 
 .versionBadge {
-  background: rgba(124, 58, 237, 0.15);
-  border: 1px solid rgba(124, 58, 237, 0.3);
-  color: var(--accent-purple);
-  padding: 0.15rem 0.5rem;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  color: var(--accent-indigo);
+  padding: 0.1rem 0.45rem;
   border-radius: 9999px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  margin-left: 0.5rem;
+  margin-left: 0.4rem;
 }
 
 .navActions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
-/* Navigation Tabs */
+/* Mod Sekmeleri */
 .tabContainer {
   display: flex;
-  background: rgba(255, 255, 255, 0.03);
-  padding: 0.25rem;
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.2rem;
+  border-radius: 8px;
   border: 1px solid var(--border-color);
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   align-self: center;
 }
 
 .tab {
-  padding: 0.6rem 1.5rem;
-  border-radius: 8px;
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: 600;
-  font-size: 0.9rem;
-  font-family: var(--font-title);
-  transition: all 0.2s ease;
+  font-weight: 500;
+  font-size: 0.85rem;
+  font-family: var(--font-sans);
+  transition: all 0.15s ease;
   background: transparent;
   border: none;
   color: var(--text-muted);
 }
 
 .activeTab {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* Layout Grid */
+/* Sayfa Yerleşimi */
 .mainLayout {
   display: grid;
-  grid-template-columns: 420px 1fr;
-  gap: 1.5rem;
+  grid-template-columns: 430px 1fr;
+  gap: 1.25rem;
   align-items: start;
   flex: 1;
 }
 
-@media (max-width: 1024px) {
-  .mainLayout {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Control Panel (Sidebar) */
+/* Sol Panel (Sidebar) */
 .sidebar {
-  padding: 1.5rem;
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
+  position: relative;
 }
 
 .sectionTitle {
-  font-size: 1.15rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.05rem;
+  margin-bottom: 0.25rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   color: #ffffff;
 }
 
-/* 3D Showcase Area */
+/* 3D Önizleme Alanı */
 .showcase {
   height: 600px;
   position: relative;
@@ -136,65 +127,65 @@
 .viewerContainer {
   flex: 1;
   position: relative;
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .viewerToolbar {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: 0.75rem;
+  right: 0.75rem;
   display: flex;
-  gap: 0.5rem;
+  gap: 0.4rem;
   z-index: 5;
 }
 
 .toolbarBtn {
-  background: rgba(15, 11, 26, 0.85);
+  background: rgba(11, 15, 25, 0.9);
   border: 1px solid var(--border-color);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(6px);
   color: var(--text-main);
-  padding: 0.5rem;
-  border-radius: 8px;
+  padding: 0.4rem;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  font-size: 0.9rem;
 }
 .toolbarBtn:hover {
-  border-color: var(--accent-purple);
-  background: var(--bg-input);
+  border-color: var(--accent-indigo);
 }
 .toolbarBtnActive {
-  background: var(--grad-primary);
+  background: var(--accent-indigo);
   border-color: transparent;
 }
 
-/* Statistics Box */
+/* Bilgi Kutusu (Stats) */
 .statsBox {
   position: absolute;
-  bottom: 1rem;
-  left: 1rem;
-  background: rgba(15, 11, 26, 0.85);
+  bottom: 0.75rem;
+  left: 0.75rem;
+  background: rgba(11, 15, 25, 0.9);
   border: 1px solid var(--border-color);
-  backdrop-filter: blur(8px);
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-size: 0.8rem;
+  backdrop-filter: blur(6px);
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
   z-index: 5;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
   pointer-events: none;
 }
 
 .statItem {
   display: flex;
   justify-content: space-between;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .statLabel {
@@ -204,62 +195,62 @@
 .statValue {
   color: var(--accent-cyan);
   font-family: var(--font-mono);
-  font-weight: 600;
+  font-weight: 500;
 }
 
-/* Image Generation options */
+/* Açı ve Oran Seçimleri */
 .promptInput {
-  min-height: 80px;
+  min-height: 70px;
   resize: vertical;
 }
 
 .aspectRatios {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .ratioOption {
   background: var(--bg-input);
   border: 1px solid var(--border-color);
-  padding: 0.5rem;
-  border-radius: 8px;
+  padding: 0.45rem;
+  border-radius: 6px;
   text-align: center;
   cursor: pointer;
-  font-size: 0.85rem;
-  transition: all 0.2s ease;
+  font-size: 0.8rem;
+  transition: all 0.15s ease;
   color: var(--text-muted);
 }
 .ratioOptionActive {
-  border-color: var(--accent-purple);
+  border-color: var(--accent-indigo);
   color: #ffffff;
-  background: rgba(124, 58, 237, 0.15);
+  background: rgba(99, 102, 241, 0.1);
 }
 
-/* Image preview & flow */
+/* Görsel Akışı (Aşama Önizlemeleri) */
 .imageFlow {
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1rem;
-  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .imageGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .imageBox {
   aspect-ratio: 1;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   border: 1px solid var(--border-color);
   position: relative;
-  background: #09080e;
+  background: #070a12;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -267,13 +258,14 @@
 
 .imageLabel {
   position: absolute;
-  bottom: 0.5rem;
-  left: 0.5rem;
-  background: rgba(0,0,0,0.7);
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.7rem;
+  bottom: 0.4rem;
+  left: 0.4rem;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
   font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .imageBox img {
@@ -282,48 +274,48 @@
   object-fit: contain;
 }
 
-/* Preset Picker */
+/* Kalite Seçenek Kartları */
 .presets {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .presetCard {
   background: var(--bg-input);
   border: 1px solid var(--border-color);
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .presetCardActive {
-  border-color: var(--accent-purple);
-  background: rgba(124, 58, 237, 0.15);
+  border-color: var(--accent-indigo);
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .presetName {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 .presetDesc {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
-  margin-top: 0.15rem;
+  margin-top: 0.1rem;
 }
 
-/* Settings Modal */
+/* Ayarlar Penceresi */
 .settingsOverlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.85);
-  backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -332,16 +324,16 @@
 }
 
 .settingsModal {
-  max-width: 500px;
+  max-width: 460px;
   width: 100%;
-  padding: 2rem;
+  padding: 1.5rem;
 }
 
 .settingsHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .closeBtn {
@@ -349,45 +341,24 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   line-height: 1;
 }
 .closeBtn:hover {
   color: #ffffff;
 }
 
-/* Footer */
-.footer {
-  margin-top: 3rem;
-  padding: 1.5rem 0;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.footerLinks {
-  display: flex;
-  gap: 1rem;
-}
-
-.footerLink:hover {
-  color: var(--accent-purple);
-}
-
-/* File info in optimizer */
+/* Dosya Bilgi Alanı */
 .fileInfo {
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: var(--bg-input);
   border: 1px solid var(--border-color);
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  border-radius: 6px;
   width: 100%;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .removeFileBtn {
@@ -404,50 +375,46 @@
 .rangeSliderContainer {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .rangeSliderHeader {
   display: flex;
   justify-content: space-between;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .slider {
   -webkit-appearance: none;
   width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(255,255,255,0.1);
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
   outline: none;
 }
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: var(--accent-purple);
+  background: var(--accent-indigo);
   cursor: pointer;
-  transition: transform 0.1s ease;
-}
-.slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
 }
 
 .ornekResimlerTitle {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.4rem;
   text-transform: uppercase;
 }
 
 .ornekGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .ornekThumbnail {
@@ -457,18 +424,103 @@
   border: 1px solid var(--border-color);
   cursor: pointer;
   position: relative;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 .ornekThumbnail:hover {
-  border-color: var(--accent-purple);
-  transform: translateY(-2px);
+  border-color: var(--accent-indigo);
 }
 .ornekThumbnailActive {
-  border-color: var(--accent-purple);
-  box-shadow: 0 0 8px rgba(124, 58, 237, 0.4);
+  border-color: var(--accent-indigo);
 }
 .ornekThumbnail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Alt Bilgi (Footer) */
+.footer {
+  margin-top: 2rem;
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.footerLinks {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.footerLink:hover {
+  color: var(--accent-indigo);
+}
+
+/* ==========================================================================
+   Responsive (Duyarlı) Ekran Kuralları (Mobil & Tablet)
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  .mainLayout {
+    grid-template-columns: 1fr;
+  }
+  
+  .showcase {
+    height: 480px; /* Tabletlerde makul yükseklik */
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 0.75rem;
+  }
+  
+  .header {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+  
+  .navActions {
+    width: 100%;
+  }
+  
+  .navActions button {
+    width: 100%;
+  }
+  
+  .tabContainer {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.25rem;
+  }
+  
+  .tab {
+    width: 100%;
+    text-align: center;
+    padding: 0.5rem;
+  }
+  
+  .showcase {
+    height: 380px; /* Mobilde dar alan ayarı */
+  }
+  
+  .ornekGrid {
+    grid-template-columns: repeat(2, 1fr); /* Mobilde örnek görseller 2 sütun */
+  }
+  
+  .imageGrid {
+    grid-template-columns: 1fr; /* Mobilde görsel karşılaştırmaları alt alta */
+  }
+  
+  .footer {
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+    font-size: 0.75rem;
+  }
 }
