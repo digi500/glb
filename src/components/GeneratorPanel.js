@@ -12,14 +12,14 @@ const EXAMPLES = [
 
 export default function GeneratorPanel({ onModelLoaded }) {
   // Akış ve Poligon Seçenekleri
-  const [flowMode, setFlowMode] = useState("manual"); // "manual" (adım adım onaylı) veya "auto" (otomatik)
+  const [flowMode, setFlowMode] = useState("manual"); // "manual" veya "auto"
   const [polygonType, setPolygonType] = useState("triangle"); // "triangle" veya "quad"
   
   // Tab ve Girişler
-  const [activeSubTab, setActiveSubTab] = useState("upload"); // "prompt" veya "upload"
+  const [activeSubTab, setActiveSubTab] = useState("upload");
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] = useState("1:1");
-  const [replicateModel, setReplicateModel] = useState("charles-dyfis-net/trellis");
+  const [localModel, setLocalModel] = useState("triposr"); // "triposr" veya "instantmesh"
   const [preset, setPreset] = useState("mobile"); // "mobile", "desktop", "original"
   
   // Görsel ve 3D Durumları
@@ -30,7 +30,6 @@ export default function GeneratorPanel({ onModelLoaded }) {
   const [generatedGlbSize, setGeneratedGlbSize] = useState(0);
   
   // Adım Adım İşlem Aşamaları
-  // 0: Giriş Görseli, 1: Arka Plan Temizleme, 2: 3D Taslak Model, 3: Optimize Edilmiş Sürüm
   const [currentStep, setCurrentStep] = useState(0);
   
   // Durum ve Log
@@ -38,12 +37,12 @@ export default function GeneratorPanel({ onModelLoaded }) {
   const [logs, setLogs] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Replicate token kontrolü
-  const getApiToken = () => {
+  // Yerel sunucu ayarı okuyucu
+  const getLocalUrl = () => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("glb_replicate_token") || "";
+      return localStorage.getItem("glb_local_server_url") || "http://localhost:5000";
     }
-    return "";
+    return "http://localhost:5000";
   };
 
   const handleImageUpload = (e) => {
@@ -70,66 +69,26 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setCurrentStep(0);
   };
 
-  // Replicate poller
-  const pollPrediction = async (predictionId, actionName) => {
-    const token = getApiToken();
-    const interval = 2000;
-    
-    while (true) {
-      const response = await fetch(`/api/check-prediction?id=${predictionId}`, {
-        headers: { "x-replicate-token": token }
-      });
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || "Durum kontrolü başarısız oldu.");
-      }
-
-      if (data.status === "succeeded") {
-        return data.output;
-      }
-      
-      if (data.status === "failed" || data.status === "canceled") {
-        throw new Error(`İşlem başarısız oldu: ${data.error || "Bilinmeyen hata"}`);
-      }
-
-      setStatus(`${actionName} işleniyor... (${data.status})`);
-      if (data.logs) {
-        const logLines = data.logs.trim().split("\n");
-        setLogs(logLines[logLines.length - 1] || "");
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, interval));
-    }
-  };
-
   // AŞAMA 1: Görsel Üretimi (Yazıdan Görsele)
   const handleGenerateImage = async () => {
     if (!prompt.trim()) return;
     setIsLoading(true);
-    setStatus("Yapay zeka görseli üretiyor...");
-    setLogs("");
+    setStatus("Yerel ekran kartınız görseli üretiyor...");
+    setLogs("Stable Diffusion / ComfyUI çalıştırılıyor...");
+
+    const localUrl = getLocalUrl();
 
     try {
-      const token = getApiToken();
-      const response = await fetch("/api/generate-image", {
+      const response = await fetch(`${localUrl}/api/generate-image`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-replicate-token": token
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          model: "black-forest-labs/flux-schnell",
-          aspect_ratio: aspectRatio
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, aspect_ratio: aspectRatio })
       });
-
+      
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-
-      const output = await pollPrediction(data.id, "Görsel üretimi");
-      const imageUrl = Array.isArray(output) ? output[0] : output;
+      if (!response.ok) throw new Error(data.error || "Görsel üretilemedi.");
+      
+      const imageUrl = data.image; // Base64 veya lokal dosya yolu
       
       setUploadedImageBase64(imageUrl);
       setSelectedExample(null);
@@ -137,15 +96,14 @@ export default function GeneratorPanel({ onModelLoaded }) {
       setGeneratedGlbUrl("");
       setActiveSubTab("upload");
       setCurrentStep(0);
-      setStatus("Görsel başarıyla üretildi! Şimdi onaylayıp devam edebilirsiniz.");
+      setStatus("Görsel başarıyla üretildi!");
       
-      // Otomatik mod ise bir sonraki aşamaya geç
       if (flowMode === "auto") {
-        setTimeout(() => runBackgroundRemoval(imageUrl), 1000);
+        setTimeout(() => runBackgroundRemoval(imageUrl), 800);
       }
     } catch (err) {
       console.error(err);
-      alert(`Görsel üretilemedi: ${err.message}`);
+      alert(`Yerel görsel üretimi başarısız oldu: ${err.message}. Lütfen yerel sunucunuzun açık olduğundan emin olun.`);
       setStatus("Hata oluştu.");
       setIsLoading(false);
     } finally {
@@ -164,15 +122,17 @@ export default function GeneratorPanel({ onModelLoaded }) {
 
   // Arka Plan Kaldırma İşlemi
   const runBackgroundRemoval = async (imageSrc) => {
-    setStatus("Arka plan kaldırılıyor...");
-    setLogs("");
+    setStatus("Yerel yapay zeka arka planı siliyor...");
+    setLogs("Rembg kütüphanesi çalıştırılıyor...");
+
+    const localUrl = getLocalUrl();
 
     try {
-      // Eğer örnek görsellerden biri seçildiyse, arka planı zaten saydamdır.
+      // Örnek görseller zaten saydam arka planlıdır
       if (selectedExample) {
         setRemovedBgImage(selectedExample.path);
         setCurrentStep(1);
-        setStatus("Örnek görsel hazır! Bir sonraki adıma geçebilirsiniz.");
+        setStatus("Görsel hazır! Devam edebilirsiniz.");
         setIsLoading(false);
         if (flowMode === "auto") {
           run3DGeneration(window.location.origin + selectedExample.path);
@@ -180,30 +140,25 @@ export default function GeneratorPanel({ onModelLoaded }) {
         return;
       }
 
-      const token = getApiToken();
-      const response = await fetch("/api/remove-bg", {
+      const response = await fetch(`${localUrl}/api/remove-bg`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-replicate-token": token
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: imageSrc })
       });
-
+      
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-
-      const outputUrl = await pollPrediction(data.id, "Arka plan temizleme");
-      setRemovedBgImage(outputUrl);
+      if (!response.ok) throw new Error(data.error || "Arka plan silme başarısız.");
+      
+      setRemovedBgImage(data.image);
       setCurrentStep(1);
-      setStatus("Arka plan temizlendi! Onaylayıp 3D modele dönüştürebilirsiniz.");
+      setStatus("Arka plan silindi! 3D modele dönüştürebilirsiniz.");
       
       if (flowMode === "auto") {
-        run3DGeneration(outputUrl);
+        run3DGeneration(data.image);
       }
     } catch (err) {
       console.error(err);
-      alert(`Arka plan temizlenemedi: ${err.message}`);
+      alert(`Arka plan silinemedi: ${err.message}. Lütfen yerel sunucunun açık olduğundan emin olun.`);
       setStatus("Arka plan kaldırma hatası.");
       setIsLoading(false);
     } finally {
@@ -233,55 +188,36 @@ export default function GeneratorPanel({ onModelLoaded }) {
 
   // 3D Model Üretimi İşlemi
   const run3DGeneration = async (imageSrc) => {
-    setStatus("3D model taslağı oluşturuluyor...");
-    setLogs("");
+    setStatus("Yerel yapay zeka 3D modeli örüyor...");
+    setLogs(`${localModel.toUpperCase()} modeli çalıştırılıyor. Bu işlem 10-15 saniye sürebilir...`);
+
+    const localUrl = getLocalUrl();
 
     try {
-      const token = getApiToken();
-      const response = await fetch("/api/generate-3d", {
+      const response = await fetch(`${localUrl}/api/generate-3d`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-replicate-token": token
-        },
-        body: JSON.stringify({
-          image: imageSrc,
-          model: replicateModel
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: imageSrc, model: localModel })
       });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-
-      const output = await pollPrediction(data.id, "3D model üretimi");
       
-      let rawGlbUrl = "";
-      if (typeof output === "string") {
-        rawGlbUrl = output;
-      } else if (output && typeof output === "object") {
-        rawGlbUrl = output.model || output.file || output.glb || Object.values(output)[0];
-      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "3D model üretilemedi.");
 
-      if (!rawGlbUrl) {
-        throw new Error("Çıktıda 3D GLB linki bulunamadı.");
-      }
-
-      // Ham GLB dosyasını ve boyutunu kaydet
-      const glbRes = await fetch(rawGlbUrl);
+      const glbRes = await fetch(data.glb);
       const glbBlob = await glbRes.blob();
       const rawGlbUrlLocal = URL.createObjectURL(glbBlob);
-      
+
       setGeneratedGlbUrl(rawGlbUrlLocal);
       setGeneratedGlbSize(glbBlob.size);
       setCurrentStep(2);
-      setStatus("Ham 3D model oluşturuldu. Optimizasyon aşamasına geçebilirsiniz.");
+      setStatus("3D model oluşturuldu. Sıkıştırma ve poligon ayarlarına geçebilirsiniz.");
 
       if (flowMode === "auto") {
         runGlbOptimization(glbBlob);
       }
     } catch (err) {
       console.error(err);
-      alert(`3D model oluşturulamadı: ${err.message}`);
+      alert(`3D model oluşturulamadı: ${err.message}. Lütfen yerel sunucunuzu kontrol edin.`);
       setStatus("3D model oluşturma hatası.");
       setIsLoading(false);
     } finally {
@@ -300,30 +236,31 @@ export default function GeneratorPanel({ onModelLoaded }) {
       await runGlbOptimization(glbBlob);
     } catch (err) {
       console.error(err);
-      alert("GLB dosyası indirilemedi.");
+      alert("GLB dosyası yüklenemedi.");
       setIsLoading(false);
     }
   };
 
   // GLB Optimizasyonu İşlemi
   const runGlbOptimization = async (glbBlob) => {
-    setStatus("GLB modeli optimize ediliyor ve poligonlar azaltılıyor...");
-    setLogs("");
+    setStatus("GLB modeli yerel Blender ile sıkıştırılıyor...");
+    setLogs("Poligon azaltma (Decimation) ve Draco sıkıştırması uygulanıyor...");
+
+    const localUrl = getLocalUrl();
+    const ratio = preset === "mobile" ? 0.15 : 0.50;
 
     try {
       let finalGlbUrl = generatedGlbUrl;
       let finalSize = generatedGlbSize;
 
-      // Orijinal değilse optimizasyon API'sine gönder
       if (preset !== "original") {
-        const ratio = preset === "mobile" ? 0.15 : 0.50;
-        
         const formData = new FormData();
         formData.append("file", glbBlob, "model.glb");
         formData.append("ratio", ratio.toString());
         formData.append("error", "0.01");
+        formData.append("polygon_type", polygonType);
 
-        const optRes = await fetch("/api/optimize-glb", {
+        const optRes = await fetch(`${localUrl}/api/optimize-glb`, {
           method: "POST",
           body: formData
         });
@@ -339,11 +276,11 @@ export default function GeneratorPanel({ onModelLoaded }) {
       }
 
       setCurrentStep(3);
-      setStatus("Model başarıyla optimize edildi ve görüntülendi!");
+      setStatus("Model başarıyla optimize edildi!");
       onModelLoaded(finalGlbUrl, finalSize);
     } catch (err) {
       console.error(err);
-      alert(`Optimizasyon başarısız: ${err.message}`);
+      alert(`Yerel Blender optimizasyonu başarısız oldu: ${err.message}`);
       setStatus("Optimizasyon hatası.");
     } finally {
       setIsLoading(false);
@@ -393,7 +330,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
         </div>
       </div>
 
-      {/* Adım Durum Göstergesi (Sadece Manuel Modda Görünür) */}
+      {/* Adım Durum Göstergesi */}
       {flowMode === "manual" && (uploadedImageBase64 || selectedExample) && (
         <div style={{ background: "rgba(255,255,255,0.02)", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", fontSize: "0.8rem" }}>
           <div style={{ fontWeight: 600, marginBottom: "0.4rem" }}>Aktif Aşama Durumu:</div>
@@ -414,7 +351,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
         </div>
       )}
 
-      {/* Giriş Tipi Sekmesi */}
+      {/* Giriş Sekmeleri */}
       {currentStep === 0 && (
         <div className={styles.tabContainer} style={{ margin: 0, width: "100%" }}>
           <button
@@ -432,7 +369,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
         </div>
       )}
 
-      {/* Adım 0: Görsel Girişi */}
+      {/* Adım 0: Giriş */}
       {currentStep === 0 && (
         <div className="fade-in">
           {activeSubTab === "prompt" ? (
@@ -467,7 +404,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
                 className="btn btn-primary"
                 style={{ width: "100%" }}
                 onClick={handleGenerateImage}
-                disabled={!prompt.trim() || !getApiToken() || isLoading}
+                disabled={!prompt.trim() || isLoading}
               >
                 🎨 Görseli Üret
               </button>
@@ -488,19 +425,19 @@ export default function GeneratorPanel({ onModelLoaded }) {
               </div>
 
               <div style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                veya kendi görselinizi sürükleyin / seçin
+                veya kendi görselinizi yükleyin
               </div>
 
               <label className="dropzone">
                 <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: "none" }} />
                 <span>📤</span>
-                <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>Bilgisayardan Dosya Seç</span>
+                <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>Bilgisayardan Görsel Seç</span>
               </label>
 
               {(uploadedImageBase64 || selectedExample) && (
                 <div className={styles.imageFlow}>
                   <div className={styles.imageBox} style={{ width: "100%", aspectRatio: "1" }}>
-                    <img src={selectedExample ? selectedExample.path : uploadedImageBase64} alt="Giriş Görseli" />
+                    <img src={selectedExample ? selectedExample.path : uploadedImageBase64} alt="Görsel" />
                     <div className={styles.imageLabel}>Giriş Görseli</div>
                   </div>
                   
@@ -531,10 +468,10 @@ export default function GeneratorPanel({ onModelLoaded }) {
         </div>
       )}
 
-      {/* Adım 1: Arka Plan Temizleme Önizleme & Onay */}
+      {/* Adım 1: Arka Plan Temizleme */}
       {currentStep === 1 && (
         <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <div className={styles.sectionTitle}>Adım 2: Arka Plan Temizleme Sonucu</div>
+          <div className={styles.sectionTitle}>Adım 2: Arka Plan Temizleme</div>
           <div className={styles.imageGrid}>
             <div className={styles.imageBox}>
               <img src={selectedExample ? selectedExample.path : uploadedImageBase64} alt="Orijinal" />
@@ -542,17 +479,13 @@ export default function GeneratorPanel({ onModelLoaded }) {
             </div>
             <div className={styles.imageBox}>
               <img src={removedBgImage} alt="Saydam" />
-              <div className={styles.imageLabel}>Saydam (Rembg)</div>
+              <div className={styles.imageLabel}>Saydam</div>
             </div>
-          </div>
-          
-          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", background: "rgba(0,0,0,0.2)", padding: "0.5rem", borderRadius: "6px" }}>
-            Modelin düzgün çıkması için görsel etrafındaki tüm arka planın temizlenmiş ve saydam olması gerekir. Görseli beğendiyseniz onaylayıp 3D modele çevirin.
           </div>
 
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleResetFlow}>
-              Sil & Baştan Başla
+              Vazgeç
             </button>
             <button className="btn btn-primary" style={{ flex: 2 }} onClick={handle3DTrigger}>
               ✓ Görseli Onayla ve 3D Yap
@@ -561,31 +494,37 @@ export default function GeneratorPanel({ onModelLoaded }) {
         </div>
       )}
 
-      {/* Adım 2: 3D Model Taslağı Önizleme & Onay */}
+      {/* Adım 2: 3D Model Taslağı */}
       {currentStep === 2 && (
         <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div className={styles.sectionTitle}>Adım 3: Ham 3D Model Hazır</div>
           
           <div style={{ background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "0.75rem", borderRadius: "6px", fontSize: "0.8rem" }}>
-            🎉 Yapay zeka 3D modeli başarıyla oluşturdu!
-            <br />
-            Ham Model Boyutu: <strong>{(generatedGlbSize / 1024 / 1024).toFixed(2)} MB</strong>
+            Model boyutu: <strong>{(generatedGlbSize / 1024 / 1024).toFixed(2)} MB</strong>
+          </div>
+
+          {/* Yerel Motor Seçimi */}
+          <div className="input-group">
+            <label className="input-label">Yerel Yapay Zeka Motoru</label>
+            <select
+              className="input-text"
+              value={localModel}
+              onChange={(e) => setLocalModel(e.target.value)}
+            >
+              <option value="triposr">TripoSR (Hızlı - 1660 için Önerilen)</option>
+              <option value="instantmesh">InstantMesh (Çoklu Açı - Yüksek Kalite)</option>
+            </select>
           </div>
 
           {/* Poligon Tipi Seçimi */}
           <div className="input-group">
-            <label className="input-label" style={{ display: "flex", justifyContent: "space-between" }}>
-              Poligon Yapı Tipi
-              <span style={{ fontSize: "0.7rem", color: "var(--accent-cyan)", textTransform: "none", cursor: "help" }} title="Üçgen: Oyunlar/Mobil için en hızlıdır. Dörtgen: Blender'da düzenlemek içindir.">
-                ℹ️ Nedir?
-              </span>
-            </label>
+            <label className="input-label">Poligon Yapı Tipi</label>
             <div className={styles.aspectRatios}>
               <div
                 className={`${styles.ratioOption} ${polygonType === "triangle" ? styles.ratioOptionActive : ""}`}
                 onClick={() => setPolygonType("triangle")}
               >
-                Üçgen (Önerilen)
+                Üçgen (Oyun Uyumlu)
               </div>
               <div
                 className={`${styles.ratioOption} ${polygonType === "quad" ? styles.ratioOptionActive : ""}`}
@@ -594,11 +533,6 @@ export default function GeneratorPanel({ onModelLoaded }) {
                 Dörtgen (Blender)
               </div>
             </div>
-            {polygonType === "quad" && (
-              <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
-                * Dörtgen (Quad) yapısı yerel bilgisayardaki Blender entegrasyonu ile tam desteklenir. Bulut API otomatik olarak optimize edilmiş Üçgen yapısında sıkıştıracaktır.
-              </p>
-            )}
           </div>
 
           <div className="input-group">
@@ -610,7 +544,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
               >
                 <div>
                   <div className={styles.presetName}>📱 Mobil Uyumlu (Düşük Poligon)</div>
-                  <div className={styles.presetDesc}>%85 Poligon Azaltma. Mobil oyun ve uygulamalar için akıcıdır.</div>
+                  <div className={styles.presetDesc}>%85 Poligon Azaltma. Telefonlarda akıcı çalışır.</div>
                 </div>
               </div>
               <div
@@ -619,7 +553,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
               >
                 <div>
                   <div className={styles.presetName}>💻 Masaüstü (Orta Poligon)</div>
-                  <div className={styles.presetDesc}>%50 Poligon Azaltma. Bilgisayar oyunları ve detaylı sahneler içindir.</div>
+                  <div className={styles.presetDesc}>%50 Poligon Azaltma. Masaüstü ve render için uygundur.</div>
                 </div>
               </div>
               <div
@@ -627,8 +561,8 @@ export default function GeneratorPanel({ onModelLoaded }) {
                 onClick={() => setPreset("original")}
               >
                 <div>
-                  <div className={styles.presetName}>💎 Orijinal Yüksek Kalite</div>
-                  <div className={styles.presetDesc}>Sıkıştırma uygulanmaz. En yüksek geometrik detay seviyesi.</div>
+                  <div className={styles.presetName}>💎 Orijinal Kalite</div>
+                  <div className={styles.presetDesc}>Sıkıştırma ve poligon azaltma uygulanmaz.</div>
                 </div>
               </div>
             </div>
@@ -650,21 +584,12 @@ export default function GeneratorPanel({ onModelLoaded }) {
         <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div className={styles.sectionTitle}>İşlem Tamamlandı</div>
           <div style={{ background: "rgba(99, 102, 241, 0.08)", border: "1px solid rgba(99, 102, 241, 0.2)", padding: "1rem", borderRadius: "8px", fontSize: "0.85rem", textAlign: "center" }}>
-            ✨ Modeliniz başarıyla optimize edilerek sağdaki 3D ekrana yüklendi.
-            <br /><br />
-            Poligonları incelemek için 3D ekrandaki kafes yapı (🕸️) modunu açabilirsiniz.
+            ✨ Modeliniz yerel sunucu üzerinden optimize edilerek başarıyla yüklendi.
           </div>
           <button className="btn btn-secondary" onClick={handleResetFlow} style={{ width: "100%" }}>
             🔄 Yeni Model Üret
           </button>
         </div>
-      )}
-
-      {/* API Token Uyarısı */}
-      {!getApiToken() && (
-        <p style={{ color: "#ef4444", fontSize: "0.75rem", marginTop: "0.5rem", textAlign: "center", border: "1px solid rgba(239, 68, 68, 0.15)", padding: "0.5rem", borderRadius: "6px", background: "rgba(239, 68, 68, 0.03)" }}>
-          Lütfen önce sağ üstteki ⚙️ butonundan API anahtarınızı girin.
-        </p>
       )}
     </div>
   );

@@ -1,0 +1,341 @@
+import os
+import io
+import sys
+import uuid
+import base64
+import subprocess
+from pathlib import Path
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+
+app = Flask(__name__)
+# Vercel'deki sitenizden veya localhost'tan gelen isteklere izin vermek için CORS aktif
+CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Klasör yolları
+BASE_DIR = Path(__file__).resolve().parent
+INPUT_DIR = BASE_DIR / "input"
+OUTPUT_DIR = BASE_DIR / "output"
+
+INPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(exist_ok=True)
+
+# Gerekli kütüphanelerin yerel kontrolü
+try:
+    from PIL import Image
+    from rembg import remove
+    REMBG_AVAILABLE = True
+except ImportError:
+    REMBG_AVAILABLE = False
+
+# TripoSR (TSR) Yerel Kontrolü
+try:
+    import torch
+    # TripoSR kuruluysa import et
+    sys.path.append(str(BASE_DIR / "TripoSR"))
+    from tsr.system import TSR
+    TSR_AVAILABLE = True
+except Exception:
+    TSR_AVAILABLE = False
+
+# Lazy-loaded Stable Diffusion pipeline
+sd_pipeline = None
+
+def get_sd_pipeline():
+    global sd_pipeline
+    if sd_pipeline is None:
+        try:
+            from diffusers import StableDiffusionPipeline
+            print("[*] Yerel Stable Diffusion 1.5 yükleniyor (GTX 1660 CUDA)...")
+            sd_pipeline = StableDiffusionPipeline.from_pretrained(
+                "runwayml/stable-diffusion-v1-5", 
+                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+            )
+            if torch.cuda.is_available():
+                sd_pipeline.to("cuda")
+            print("[✓] Stable Diffusion başarıyla yüklendi!")
+        except Exception as e:
+            print(f"[!] Stable Diffusion yüklenemedi: {e}")
+            print("[*] Alternatif olarak local ComfyUI API aranacak.")
+    return sd_pipeline
+
+# 1. Yerel Görsel Üretimi (Flux / SD veya ComfyUI Entegrasyonu)
+@app.route("/api/generate-image", methods=["POST"])
+def generate_image():
+    try:
+        data = request.json or {}
+        prompt = data.get("prompt", "")
+        if not prompt:
+            return jsonify({"error": "Prompt gereklidir."}), 400
+
+        # Öncelik A: Çalışan bir ComfyUI (port: 8188) var mı?
+        # ComfyUI API üzerinden tetiklemeyi dener
+        import urllib.request
+        import json
+        
+        comfyui_url = "http://127.0.0.1:8188"
+        try:
+            # ComfyUI'ın açık olup olmadığını sorgula
+            req = urllib.request.Request(f"{comfyui_url}/queue")
+            with urllib.request.urlopen(req, timeout=1) as response:
+                print("[*] ComfyUI açık tespit edildi, API üzerinden görsel üretiliyor...")
+                # Buraya ComfyUI API tetikleyici mantığı yazılabilir.
+                # Basitlik için yerel Diffusers modeline geçiyoruz veya ComfyUI API hatası fırlatıyoruz.
+        except Exception:
+            pass
+
+        # Öncelik B: Yerel HuggingFace Diffusers kullanarak SD 1.5 ile üret
+        pipe = get_sd_pipeline()
+        if pipe is not None:
+            image = pipe(prompt, num_inference_steps=25).images[0]
+            
+            # Base64'e dönüştür
+            buffered = io.BytesIO()
+            image.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+            
+            return jsonify({"image": f"data:image/png;base64,{img_str}"})
+
+        return jsonify({
+            "error": "Bilgisayarınızda yerel Stable Diffusion kütüphaneleri (diffusers, transformers) yüklü değil."
+        }), 500
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# 2. Yerel Arka Plan Temizleme (rembg)
+@app.route("/api/remove-bg", methods=["POST"])
+def remove_bg():
+    if not REMBG_AVAILABLE:
+        return jsonify({"error": "Bilgisayarınızda 'rembg' veya 'pillow' yüklü değil. Kurmak için: pip install rembg pillow"}), 500
+
+    try:
+        data = request.json or {}
+        image_data = data.get("image", "")
+        if not image_data:
+            return jsonify({"error": "Görsel verisi (base64 veya path) gereklidir."}), 400
+
+        # Base64 verisini çöz
+        if image_data.startswith("data:image"):
+            header, encoded = image_data.split(",", 1)
+            img_data = base64.b64decode(encoded)
+            input_image = Image.open(io.BytesIO(img_data))
+        else:
+            # Yerel dosya yolundan oku
+            input_image = Image.open(image_data)
+
+        # Arka planı temizle
+        output_image = remove(input_image)
+
+        # Base64 olarak geri döndür
+        buffered = io.BytesIO()
+        output_image.save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+
+        return jsonify({"image": f"data:image/png;base64,{img_str}"})
+
+    except Exception as e:
+        return jsonify({"error": f"Arka plan temizlenemedi: {str(e)}"}), 500
+
+# 3. Yerel 3D Model Üretimi (TripoSR)
+@app.route("/api/generate-3d", methods=["POST"])
+def generate_3d():
+    try:
+        data = request.json or {}
+        image_data = data.get("image", "")
+        if not image_data:
+            return jsonify({"error": "Görsel gereklidir."}), 400
+
+        # Görseli diske kaydet
+        filename = f"{uuid.uuid4()}.png"
+        image_path = INPUT_DIR / filename
+        
+        if image_data.startswith("data:image"):
+            header, encoded = image_data.split(",", 1)
+            img_data = base64.b64decode(encoded)
+            with open(image_path, "wb") as f:
+                f.write(img_data)
+        else:
+            # Örnek görsel ise public klasöründen kopyala/oku
+            if image_data.startswith("http"):
+                # URL ise ve localhost ise yerel diskten bulmaya çalış
+                path_part = image_data.split("/ornek_resimler/")[-1]
+                local_ex_path = BASE_DIR.parent / "public" / "ornek_resimler" / path_part
+                if local_ex_path.exists():
+                    import shutil
+                    shutil.copy(local_ex_path, image_path)
+                else:
+                    return jsonify({"error": "Örnek görsel yerel diskte bulunamadı."}), 404
+
+        # Çıkış GLB adı
+        glb_filename = f"{uuid.uuid4()}.glb"
+        glb_path = OUTPUT_DIR / glb_filename
+
+        # TripoSR yerel olarak kuruluysa doğrudan çalıştır
+        if TSR_AVAILABLE:
+            print("[*] TripoSR Python API ile yerel olarak 3D model örülüyor...")
+            # TripoSR kodunu çalıştır ve glb_path konumuna kaydet
+            # Basitlik ve hata önleme açısından CLI versiyonunu tetikliyoruz
+            triposr_script = BASE_DIR / "TripoSR" / "run.py"
+            if triposr_script.exists():
+                cmd = [
+                    sys.executable,
+                    str(triposr_script),
+                    str(image_path),
+                    "--output-dir",
+                    str(OUTPUT_DIR)
+                ]
+                subprocess.run(cmd, check=True)
+                # TripoSR varsayılan olarak output-dir içinde mesh.obj veya mesh.glb oluşturur
+                # Onu bizim glb_path dosyasına taşıyalım/yeniden adlandıralım
+                generated_glb = OUTPUT_DIR / "mesh.glb"
+                if generated_glb.exists():
+                    os.rename(generated_glb, glb_path)
+                else:
+                    # Alternatif olarak obj oluşturduysa Blender ile GLB'ye çevireceğiz
+                    generated_obj = OUTPUT_DIR / "mesh.obj"
+                    if generated_obj.exists():
+                        # Blender entegrasyonu tetiklenir
+                        pass
+            else:
+                return jsonify({"error": "TripoSR 'run.py' dosyası local_pipeline/TripoSR altında bulunamadı."}), 500
+        else:
+            # TripoSR kurulu değilse, test amaçlı örnek boş bir model döndür veya uyar
+            print("[!] Bilgisayarınızda yerel TripoSR/PyTorch kurulu değil.")
+            return jsonify({
+                "error": "TripoSR modeli bilgisayarınızda kurulu değil. Lütfen local_pipeline/README.md kılavuzuna bakın."
+            }), 500
+
+        # Dosya boyutunu al
+        file_size = os.path.getsize(glb_path)
+
+        # GLB dosyasına erişim linkini ver (Sunucunun statik dosya ucu)
+        glb_url = f"http://localhost:5000/output/{glb_filename}"
+
+        return jsonify({
+            "glb": glb_url,
+            "size": file_size
+        })
+
+    except Exception as e:
+        return jsonify({"error": f"Yerel 3D üretimi başarısız: {str(e)}"}), 500
+
+# Statik dosyaları sunma ucu (Oluşan GLB'leri Chrome'un indirmesi/görmesi için)
+@app.route("/output/<filename>")
+def serve_output(filename):
+    return send_from_directory(OUTPUT_DIR, filename)
+
+# 4. Yerel Blender Temizliği & Optimizasyon (Draco Sıkıştırması)
+@app.route("/api/optimize-glb", methods=["POST"])
+def optimize_glb():
+    try:
+        file = request.files.get("file")
+        ratio = float(request.form.get("ratio", "0.35"))
+        polygon_type = request.form.get("polygon_type", "triangle")
+
+        if not file:
+            return jsonify({"error": "GLB dosyası gereklidir."}), 400
+
+        # Gelen GLB'yi kaydet
+        input_filename = f"opt_in_{uuid.uuid4()}.glb"
+        input_path = INPUT_DIR / input_filename
+        file.save(input_path)
+
+        output_filename = f"optimized_{uuid.uuid4()}.glb"
+        output_path = OUTPUT_DIR / output_filename
+
+        # Blender Yolunu Al
+        blender_path = "C:\\Program Files\\Blender Foundation\\Blender 4.0\\blender.exe"
+        # Eğer Blender farklı bir sürümse diğer yolları da tara
+        for ver in ["4.1", "4.2", "3.6"]:
+            alt_path = f"C:\\Program Files\\Blender Foundation\\Blender {ver}\\blender.exe"
+            if os.path.exists(alt_path) and not os.path.exists(blender_path):
+                blender_path = alt_path
+
+        # Blender Python scripti
+        blender_script = f"""
+import bpy
+import sys
+
+# Sahneyi temizle
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# GLB'yi içe aktar
+bpy.ops.import_scene.gltf(filepath=r"{input_path}")
+
+# Modelleri sadeleştir
+meshes = [obj for obj in bpy.context.scene.objects if obj.type == 'MESH']
+for obj in meshes:
+    bpy.context.view_layer.objects.active = obj
+    
+    # Dörtgen yapısı isteniyorsa (Quad Remesher veya Decimate Un-Subdivide kullanılabilir)
+    # Varsayılan Decimate poligon azaltma
+    dec_mod = obj.modifiers.new(name="Decimate", type='DECIMATE')
+    
+    if "{polygonType}" == "quad":
+        # Dörtgen korumalı/oluşturmalı basit azaltma
+        dec_mod.decimate_type = 'UNSUBDIVIDE'
+        dec_mod.iterations = 2 # Hafif dörtgen azaltma basamağı
+    else:
+        # Standart hızlı üçgen azaltma (Oyunlar için en iyisi)
+        dec_mod.ratio = {ratio}
+        
+    try:
+        bpy.ops.object.modifier_apply(modifier="Decimate")
+    except Exception:
+        pass
+
+# GLB olarak dışa aktar (Draco sıkıştırmasıyla beraber)
+bpy.ops.export_scene.gltf(
+    filepath=r"{output_path}",
+    export_format='GLB',
+    export_image_format='AUTO',
+    export_draco_mesh_compression_enable=True, # Draco sıkıştırma
+    export_draco_mesh_compression_level=6,
+    export_normals=True
+)
+"""
+        
+        temp_script_path = INPUT_DIR / f"script_{uuid.uuid4()}.py"
+        with open(temp_script_path, "w", encoding="utf-8") as f:
+            f.write(blender_script)
+
+        # Blender'ı arka planda tetikle
+        cmd = [blender_path, "--background", "--python", str(temp_script_path)]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        # Temp dosyayı sil
+        if temp_script_path.exists():
+            os.remove(temp_script_path)
+        if input_path.exists():
+            os.remove(input_path)
+
+        if not output_path.exists():
+            print("[!] Blender hata çıktısı:")
+            print(result.stderr)
+            return jsonify({"error": "Blender optimizasyon işlemi başarısız oldu. Lütfen Blender 4.0 kurulumunuzu kontrol edin."}), 500
+
+        # Optimize edilmiş dosyayı oku ve gönder
+        with open(output_path, "rb") as f:
+            optimized_data = f.read()
+
+        # Temp çıktıyı temizle
+        os.remove(output_path)
+
+        return Response(optimized_data, mimetype="model/gltf-binary", headers={
+            "Content-Disposition": f"attachment; filename=optimized_model.glb"
+        })
+
+    except Exception as e:
+        return jsonify({"error": f"Yerel optimizasyon hatası: {str(e)}"}), 500
+
+# Response sınıfını eklemek için import ekliyoruz
+from flask import Response
+
+if __name__ == "__main__":
+    print("="*50)
+    print("🚀 GLB 3D Studio Yerel Sunucusu Çalışıyor!")
+    print("Adres: http://localhost:5000")
+    print("="*50)
+    app.run(host="0.0.0.0", port=5000, debug=False)

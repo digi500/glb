@@ -4,23 +4,23 @@ import { useEffect, useState } from "react";
 import styles from "../app/Home.module.css";
 
 export default function SettingsPanel({ isOpen, onClose }) {
-  const [replicateToken, setReplicateToken] = useState("");
+  const [localServerUrl, setLocalServerUrl] = useState("http://localhost:5000");
   const [isSaved, setIsSaved] = useState(false);
 
-  // Load saved token from localStorage on mount
+  // Load configuration from localStorage on mount/open
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedToken = localStorage.getItem("glb_replicate_token") || "";
-      setReplicateToken(savedToken);
+      const savedUrl = localStorage.getItem("glb_local_server_url") || "http://localhost:5000";
+      setLocalServerUrl(savedUrl);
     }
   }, [isOpen]);
 
   const handleSave = (e) => {
     e.preventDefault();
     if (typeof window !== "undefined") {
-      localStorage.setItem("glb_replicate_token", replicateToken.trim());
+      localStorage.setItem("glb_local_server_url", localServerUrl.trim());
       
-      // Update global context/event for other components to reload keys
+      // Notify other components of the change
       window.dispatchEvent(new Event("glb_settings_updated"));
       
       setIsSaved(true);
@@ -37,29 +37,30 @@ export default function SettingsPanel({ isOpen, onClose }) {
     <div className={styles.settingsOverlay} onClick={onClose}>
       <div className={`${styles.settingsModal} panel`} onClick={(e) => e.stopPropagation()}>
         <div className={styles.settingsHeader}>
-          <h2>⚙️ Yapay Zeka & API Ayarları</h2>
+          <h2>⚙️ Yerel Sunucu Ayarları</h2>
           <button className={styles.closeBtn} onClick={onClose}>×</button>
         </div>
 
-        <form onSubmit={handleSave}>
+        <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          
           <div className="input-group">
-            <label className="input-label" htmlFor="replicate_token">
-              Replicate API Token
+            <label className="input-label" htmlFor="local_server_url">
+              Yerel Sunucu Adresi (Local Host)
             </label>
             <input
-              id="replicate_token"
-              type="password"
+              id="local_server_url"
+              type="text"
               className="input-text"
-              placeholder="r8_..."
-              value={replicateToken}
-              onChange={(e) => setReplicateToken(e.target.value)}
+              placeholder="http://localhost:5000"
+              value={localServerUrl}
+              onChange={(e) => setLocalServerUrl(e.target.value)}
             />
             <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>
-              API anahtarınız tarayıcınızda (localStorage) güvenli bir şekilde saklanır ve sunucuya gönderilmez. Replicate hesabınızdan alabilirsiniz.
+              Uygulama, görsel üretimi ve 3D çevirme işlemleri için bilgisayarınızdaki bu adreste çalışan Python sunucusunu kullanacaktır.
             </p>
           </div>
 
-          <div style={{ marginTop: "1.5rem", display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+          <div style={{ marginTop: "1rem", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
             <button type="button" className="btn btn-secondary" onClick={onClose}>
               İptal
             </button>

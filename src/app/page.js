@@ -13,23 +13,20 @@ export default function Home() {
   const [modelUrl, setModelUrl] = useState("");
   const [modelSize, setModelSize] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [hasApiKey, setHasApiKey] = useState(false);
+  const [localServerUrl, setLocalServerUrl] = useState("http://localhost:5000");
 
-  // Check if API key exists in localStorage
-  const checkApiKey = () => {
+  const checkSettings = () => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("glb_replicate_token");
-      setHasApiKey(!!token);
+      const savedUrl = localStorage.getItem("glb_local_server_url") || "http://localhost:5000";
+      setLocalServerUrl(savedUrl);
     }
   };
 
   useEffect(() => {
-    checkApiKey();
-
-    // Listen for setting changes
-    window.addEventListener("glb_settings_updated", checkApiKey);
+    checkSettings();
+    window.addEventListener("glb_settings_updated", checkSettings);
     return () => {
-      window.removeEventListener("glb_settings_updated", checkApiKey);
+      window.removeEventListener("glb_settings_updated", checkSettings);
     };
   }, []);
 
@@ -64,9 +61,8 @@ export default function Home() {
           <button 
             className="btn btn-secondary"
             onClick={() => setIsSettingsOpen(true)}
-            style={{ borderColor: hasApiKey ? "var(--accent-cyan)" : "var(--accent-pink)" }}
           >
-            {hasApiKey ? "⚙️ Ayarlar (Bağlı)" : "⚙️ Ayarlar (Anahtar Eksik)"}
+            ⚙️ Ayarlar
           </button>
         </div>
       </header>
@@ -139,22 +135,13 @@ export default function Home() {
                 }}
               >
                 <div style={{ fontSize: "3rem" }}>✨</div>
-                <h3>Kullanıma Hazır 3D Stüdyosu</h3>
+                <h3>Yerel 3D Stüdyosu</h3>
                 <p style={{ color: "var(--text-muted)", maxWidth: "450px", fontSize: "0.9rem" }}>
                   {activeTab === "generator" 
-                    ? "Başlamak için önce sağ üstteki Ayarlar ⚙️ butonundan Replicate API anahtarınızı girin. Ardından sol panelden bir örnek görsel seçin veya prompt yazıp görsel üreterek '3D GLB Model Üret' seçeneğini tıklayın."
-                    : "Bilgisayarınızdaki herhangi bir .glb dosyasını sol tarafa yükleyin, ardından poligon azaltma (decimation) oranlarını ayarlayarak saniyeler içinde optimize edin."
+                    ? `Bu stüdyo bilgisayarınızdaki yerel GPU sunucusunu (${localServerUrl}) kullanır. Başlamak için arka planda yerel sunucuyu çalıştırın, ardından sol panelden bir örnek görsel seçerek veya prompt yazıp görsel üreterek '3D GLB Model Üret' seçeneğini tıklayın.`
+                    : "Bilgisayarınızdaki herhangi bir .glb dosyasını sol tarafa yükleyin, ardından poligon azaltma (decimation) oranlarını ayarlayarak yerel Blender ile saniyeler içinde ücretsiz optimize edin."
                   }
                 </p>
-                {!hasApiKey && activeTab === "generator" && (
-                  <button 
-                    className="btn btn-primary"
-                    onClick={() => setIsSettingsOpen(true)}
-                    style={{ marginTop: "0.5rem" }}
-                  >
-                    🔑 API Anahtarını Şimdi Gir
-                  </button>
-                )}
               </div>
             )}
           </div>
@@ -170,7 +157,7 @@ export default function Home() {
       {/* Footer */}
       <footer className={styles.footer}>
         <div>
-          © {new Date().getFullYear()} GLB 3D Studio - Oyunlar ve Mobil Uygulamalar için AI Tabanlı 3D Varlık Geliştirici.
+          © {new Date().getFullYear()} GLB 3D Studio - Kendi Bilgisayarınızın Gücüyle Sınırsız & Ücretsiz 3D Geliştirici.
         </div>
         <div className={styles.footerLinks}>
           <span>GitHub: <a href="https://github.com/digi500/glb" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>digi500/glb</a></span>

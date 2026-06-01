@@ -10,6 +10,16 @@ export default function OptimizerPanel({ onModelLoaded }) {
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState("");
 
+  const getSettings = () => {
+    if (typeof window !== "undefined") {
+      return {
+        mode: localStorage.getItem("glb_execution_mode") || "cloud",
+        localUrl: localStorage.getItem("glb_local_server_url") || "http://localhost:5000"
+      };
+    }
+    return { mode: "cloud", localUrl: "http://localhost:5000" };
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -32,13 +42,18 @@ export default function OptimizerPanel({ onModelLoaded }) {
     setIsLoading(true);
     setStatus("GLB dosyası optimize ediliyor...");
 
+    const { mode, localUrl } = getSettings();
+
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
       formData.append("ratio", ratio.toString());
       formData.append("error", error.toString());
 
-      const response = await fetch("/api/optimize-glb", {
+      // API rotasını çalışma moduna göre seç
+      const targetApi = mode === "local" ? `${localUrl}/api/optimize-glb` : "/api/optimize-glb";
+
+      const response = await fetch(targetApi, {
         method: "POST",
         body: formData
       });
