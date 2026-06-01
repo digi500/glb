@@ -32,10 +32,57 @@ export default function GeneratorPanel({ onModelLoaded }) {
   // Adım Adım İşlem Aşamaları
   const [currentStep, setCurrentStep] = useState(0);
   
-  // Durum ve Log
+  // Durum, Log ve İlerleme Çubuğu
   const [status, setStatus] = useState("");
   const [logs, setLogs] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [countdown, setCountdown] = useState(0);
+
+  // Bellek sızıntısını önlemek için interval temizliği
+  useEffect(() => {
+    return () => {
+      if (window.progressInterval) clearInterval(window.progressInterval);
+    };
+  }, []);
+
+  // İlerleme çubuğu simülasyonu başlatıcı
+  const startProgress = (durationSeconds) => {
+    setProgress(1);
+    setCountdown(durationSeconds);
+    
+    if (window.progressInterval) clearInterval(window.progressInterval);
+    
+    const startTime = Date.now();
+    const endTime = startTime + durationSeconds * 1000;
+    
+    window.progressInterval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - startTime;
+      const total = durationSeconds * 1000;
+      
+      const remainingSeconds = Math.max(0, Math.ceil((endTime - now) / 1000));
+      setCountdown(remainingSeconds);
+      
+      // Erken dolup kilitlenmiş hissi vermemesi için %95'te sınırla
+      const currentProgress = Math.min(95, (elapsed / total) * 100);
+      setProgress(currentProgress);
+      
+      if (now >= endTime) {
+        clearInterval(window.progressInterval);
+      }
+    }, 100);
+  };
+
+  // İlerleme çubuğunu tamamlayıcı
+  const stopProgress = () => {
+    if (window.progressInterval) clearInterval(window.progressInterval);
+    setProgress(100);
+    setCountdown(0);
+    setTimeout(() => {
+      setProgress(0);
+    }, 500);
+  };
 
   // Yerel sunucu ayarı okuyucu
   const getLocalUrl = () => {
@@ -75,6 +122,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setIsLoading(true);
     setStatus("Yerel ekran kartınız görseli üretiyor...");
     setLogs("Stable Diffusion / ComfyUI çalıştırılıyor...");
+    startProgress(8); // Görsel üretimi için tahmini 8 saniye
 
     const localUrl = getLocalUrl();
 
@@ -88,7 +136,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Görsel üretilemedi.");
       
-      const imageUrl = data.image; // Base64 veya lokal dosya yolu
+      const imageUrl = data.image;
       
       setUploadedImageBase64(imageUrl);
       setSelectedExample(null);
@@ -97,12 +145,14 @@ export default function GeneratorPanel({ onModelLoaded }) {
       setActiveSubTab("upload");
       setCurrentStep(0);
       setStatus("Görsel başarıyla üretildi!");
+      stopProgress();
       
       if (flowMode === "auto") {
         setTimeout(() => runBackgroundRemoval(imageUrl), 800);
       }
     } catch (err) {
       console.error(err);
+      stopProgress();
       alert(`Yerel görsel üretimi başarısız oldu: ${err.message}. Lütfen yerel sunucunuzun açık olduğundan emin olun.`);
       setStatus("Hata oluştu.");
       setIsLoading(false);
@@ -124,15 +174,16 @@ export default function GeneratorPanel({ onModelLoaded }) {
   const runBackgroundRemoval = async (imageSrc) => {
     setStatus("Yerel yapay zeka arka planı siliyor...");
     setLogs("Rembg kütüphanesi çalıştırılıyor...");
+    startProgress(3); // Arka plan silme için tahmini 3 saniye
 
     const localUrl = getLocalUrl();
 
     try {
-      // Örnek görseller zaten saydam arka planlıdır
       if (selectedExample) {
         setRemovedBgImage(selectedExample.path);
         setCurrentStep(1);
         setStatus("Görsel hazır! Devam edebilirsiniz.");
+        stopProgress();
         setIsLoading(false);
         if (flowMode === "auto") {
           run3DGeneration(window.location.origin + selectedExample.path);
@@ -152,12 +203,14 @@ export default function GeneratorPanel({ onModelLoaded }) {
       setRemovedBgImage(data.image);
       setCurrentStep(1);
       setStatus("Arka plan silindi! 3D modele dönüştürebilirsiniz.");
+      stopProgress();
       
       if (flowMode === "auto") {
         run3DGeneration(data.image);
       }
     } catch (err) {
       console.error(err);
+      stopProgress();
       alert(`Arka plan silinemedi: ${err.message}. Lütfen yerel sunucunun açık olduğundan emin olun.`);
       setStatus("Arka plan kaldırma hatası.");
       setIsLoading(false);
@@ -189,7 +242,11 @@ export default function GeneratorPanel({ onModelLoaded }) {
   // 3D Model Üretimi İşlemi
   const run3DGeneration = async (imageSrc) => {
     setStatus("Yerel yapay zeka 3D modeli örüyor...");
-    setLogs(`${localModel.toUpperCase()} modeli çalıştırılıyor. Bu işlem 10-15 saniye sürebilir...`);
+    setLogs(`${localModel.toUpperCase()} modeli çalıştırılıyor. Bu işlem biraz sürebilir...`);
+    
+    // TripoSR GPU üzerinde ortalama 15-20 saniye sürer
+    const estimatedTime = localModel === "triposr" ? 20 : 45;
+    startProgress(estimatedTime);
 
     const localUrl = getLocalUrl();
 
@@ -210,14 +267,16 @@ export default function GeneratorPanel({ onModelLoaded }) {
       setGeneratedGlbUrl(rawGlbUrlLocal);
       setGeneratedGlbSize(glbBlob.size);
       setCurrentStep(2);
-      setStatus("3D model oluşturuldu. Sıkıştırma ve poligon ayarlarına geçebilirsiniz.");
+      setStatus("3D model oluşturuldu! Optimizasyona geçebilirsiniz.");
+      stopProgress();
 
       if (flowMode === "auto") {
         runGlbOptimization(glbBlob);
       }
     } catch (err) {
       console.error(err);
-      alert(`3D model oluşturulamadı: ${err.message}. Lütfen yerel sunucunuzu kontrol edin.`);
+      stopProgress();
+      alert(`3D model oluşturulamadı: ${err.message}. Lütfen yerel sunucunuzdaki konsol hata çıktılarını kontrol edin.`);
       setStatus("3D model oluşturma hatası.");
       setIsLoading(false);
     } finally {
@@ -244,7 +303,8 @@ export default function GeneratorPanel({ onModelLoaded }) {
   // GLB Optimizasyonu İşlemi
   const runGlbOptimization = async (glbBlob) => {
     setStatus("GLB modeli yerel Blender ile sıkıştırılıyor...");
-    setLogs("Poligon azaltma (Decimation) ve Draco sıkıştırması uygulanıyor...");
+    setLogs("Poligon azaltma (Decimation) ve sıkıştırma uygulanıyor...");
+    startProgress(5); // Blender işlemi için tahmini 5 saniye
 
     const localUrl = getLocalUrl();
     const ratio = preset === "mobile" ? 0.15 : 0.50;
@@ -277,9 +337,11 @@ export default function GeneratorPanel({ onModelLoaded }) {
 
       setCurrentStep(3);
       setStatus("Model başarıyla optimize edildi!");
+      stopProgress();
       onModelLoaded(finalGlbUrl, finalSize);
     } catch (err) {
       console.error(err);
+      stopProgress();
       alert(`Yerel Blender optimizasyonu başarısız oldu: ${err.message}`);
       setStatus("Optimizasyon hatası.");
     } finally {
@@ -297,6 +359,7 @@ export default function GeneratorPanel({ onModelLoaded }) {
     setCurrentStep(0);
     setStatus("");
     setLogs("");
+    setProgress(0);
   };
 
   return (
@@ -305,9 +368,21 @@ export default function GeneratorPanel({ onModelLoaded }) {
         <div className="loading-overlay">
           <div className="spinner"></div>
           <div style={{ fontWeight: 500, color: "#ffffff", fontSize: "0.95rem" }}>{status}</div>
-          <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", maxWidth: "90%", textAlign: "center" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", maxWidth: "90%", textAlign: "center", marginBottom: "0.25rem" }}>
             {logs}
           </div>
+          
+          {/* İlerleme Çubuğu Arayüzü */}
+          {progress > 0 && (
+            <>
+              <div className={styles.progressBarContainer}>
+                <div className={styles.progressBarFill} style={{ width: `${progress}%` }}></div>
+              </div>
+              <div className={styles.progressTimer}>
+                Tahmini Kalan Süre: <strong>{countdown}</strong> saniye
+              </div>
+            </>
+          )}
         </div>
       )}
 

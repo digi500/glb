@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local pipeline
+local_pipeline/TripoSR/
+local_pipeline/input/
+local_pipeline/output/
+
