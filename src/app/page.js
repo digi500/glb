@@ -1,6 +1,6 @@
 "use client";
-
-import { useEffect, useState } from "react";
+ 
+import { useEffect, useState, useRef } from "react";
 import styles from "./Home.module.css";
 import ThreeViewer from "../components/ThreeViewer";
 import GeneratorPanel from "../components/GeneratorPanel";
@@ -21,7 +21,7 @@ const ENGINES = {
     name: "InstantMesh (Tencent)",
     speed: "2-3 dk",
     vram: "12 GB",
-    polyType: "🔺 Üçgen (Triangles)",
+    polyType: "🔺 Üzen (Triangles)",
     texture: "🖼️ 1024x1024 UV Kaplama",
     desc: "Çoklu açı üreterek tutarlı 3D nesneler oluşturur."
   },
@@ -91,6 +91,19 @@ const ENGINES = {
   }
 };
 
+const ESTIMATED_TIMES = {
+  triposr: 30,
+  sf3d: 8,
+  crm: 15,
+  lgm: 30,
+  dreamgaussian: 25,
+  one2345: 60,
+  trellis: 90,
+  instantmesh: 180,
+  hunyuan3d: 120,
+  unique3d: 180
+};
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState("generator"); // "generator" or "optimizer"
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -100,6 +113,19 @@ export default function Home() {
 
   // Seçilen Kıyaslama Motorları (Varsayılan olarak boş liste)
   const [selectedEngines, setSelectedEngines] = useState([]);
+
+  // Timer states
+  const [elapsedTimes, setElapsedTimes] = useState({
+    triposr: 0, instantmesh: 0, trellis: 0, hunyuan3d: 0, sf3d: 0,
+    unique3d: 0, lgm: 0, crm: 0, dreamgaussian: 0, one2345: 0
+  });
+
+  const [countdowns, setCountdowns] = useState({
+    triposr: 0, instantmesh: 0, trellis: 0, hunyuan3d: 0, sf3d: 0,
+    unique3d: 0, lgm: 0, crm: 0, dreamgaussian: 0, one2345: 0
+  });
+
+  const intervalsRef = useRef({});
 
   // 10 Motorun durum yönetimi
   const [modelsState, setModelsState] = useState({
