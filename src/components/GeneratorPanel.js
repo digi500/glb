@@ -14,82 +14,82 @@ const ENGINES = {
   triposr: {
     name: "TripoSR (Stability AI)",
     speed: "15-45 sn",
-    vram: "4-6 GB",
+    vram: "4-6 GB (GPU)",
     polyType: "🔺 Üçgen (Triangles)",
     texture: "🎨 Köşe Noktası Rengi",
-    desc: "GTX 1660 için en uygun yerel hızlı motor."
+    desc: "GTX 1660 için en uygun yerel hızlı motor. İnternetsiz çalışır."
   },
   instantmesh: {
     name: "InstantMesh (Tencent)",
-    speed: "2-3 dk",
-    vram: "12 GB",
+    speed: "5-10 dk (Yerel CPU) / 2 dk (Bulut)",
+    vram: "12-16 GB (RAM/VRAM)",
     polyType: "🔺 Üçgen (Triangles)",
     texture: "🖼️ 1024x1024 UV Kaplama",
-    desc: "Çoklu açı üreterek tutarlı 3D nesneler oluşturur."
+    desc: "Çoklu açı üreterek çalışır. Yerelde CPU üzerinde oldukça yavaştır."
   },
   trellis: {
     name: "TRELLIS (Microsoft)",
-    speed: "60-90 sn",
-    vram: "12-16 GB",
+    speed: "15-20 dk (Yerel CPU) / 90 sn (Bulut)",
+    vram: "16 GB+ (RAM)",
     polyType: "🔺 Üçgen (Triangles)",
     texture: "🖼️ 2048x2048 Tam PBR",
-    desc: "E-ticaret ve ürün katalogları için en yüksek geometri kalitesi."
+    desc: "En yüksek geometri kalitesi. Yerelde yüksek RAM ve işlemci gücü gerektirir."
   },
   hunyuan3d: {
     name: "Hunyuan3D-V2 (Tencent)",
-    speed: "2-3 dk",
-    vram: "16-29 GB",
+    speed: "15-25 dk (Yerel CPU) / 2 dk (Bulut)",
+    vram: "16 GB+ (RAM) / 15GB Disk",
     polyType: "🔺/⬛ Üçgen veya Dörtgen",
     texture: "🖼️ 2048x2048 PBR Sentez",
-    desc: "Poligon sayısı ve topolojisi ayarlanabilir oyun motoru dostu model."
+    desc: "Poligon sayısı ve topolojisi ayarlanabilir model. Yerelde CPU'da çok yavaştır."
   },
   sf3d: {
     name: "Stable Fast 3D (Stability AI)",
-    speed: "< 1 sn",
-    vram: "6 GB",
+    speed: "1-2 dk (Yerel CPU) / 10 sn (Bulut)",
+    vram: "6 GB (VRAM)",
     polyType: "🔺 Üçgen (Low-Poly)",
     texture: "🖼️ 1024x1024 Hızlı UV",
-    desc: "Saniyeler altında oyun-hazır düşük poligonlu model üretir."
+    desc: "Oyun-hazır düşük poligonlu model üretir."
   },
   unique3d: {
     name: "Unique3D (Tencent)",
-    speed: "3-4 dk",
-    vram: "16 GB",
+    speed: "15-25 dk (Yerel CPU) / 3 dk (Bulut)",
+    vram: "16 GB (RAM)",
     polyType: "🔺 Üçgen (İnce Detay)",
     texture: "🖼️ 2048x2048 Normal Harita",
-    desc: "Normal map üreterek nesnedeki çatlak ve ince kabartmaları işler."
+    desc: "Detaylı kabartmalar üretir, yerelde işlemci üzerinde çalışması çok uzundur."
   },
   lgm: {
     name: "LGM (Large Gaussian Model)",
-    speed: "5 sn",
-    vram: "8 GB",
+    speed: "2-4 dk (Yerel CPU) / 10 sn (Bulut)",
+    vram: "8 GB (RAM)",
     polyType: "🔺 Üçgen (Gaussian)",
     texture: "🖼️ 1024x1024 Albedo",
-    desc: "Nokta bulutunu hızlıca örgüye çevirir, organik yapılar için iyidir."
+    desc: "Hızlı taslak üretimi. Yerel CPU modunda yavaş işlenir."
   },
   crm: {
     name: "CRM (Convolutional)",
-    speed: "10 sn",
-    vram: "8 GB",
+    speed: "2-4 dk (Yerel CPU) / 15 sn (Bulut)",
+    vram: "8 GB (RAM)",
     polyType: "🔺 Üçgen (Triangles)",
     texture: "🖼️ 1024x1024 Albedo",
-    desc: "Triplane projeksiyonu kullanan hızlı simetrik model oluşturucu."
+    desc: "Hızlı simetrik model oluşturucu."
   },
   dreamgaussian: {
     name: "DreamGaussian",
-    speed: "15 sn",
-    vram: "6 GB",
+    speed: "1-2 dk (Yerel CPU) / 20 sn (Bulut)",
+    vram: "6 GB (RAM)",
     polyType: "🔺 Üçgen (Düzensiz)",
     texture: "🖼️ 2048x2048 Yüksek Res",
-    desc: "Geometrisi pürüzlü ancak dokusu çok net olan hızlı prototipleme motoru."
+    desc: "Hızlı prototipleme motoru."
   },
   one2345: {
     name: "One-2-3-45 / MeshPrime",
-    speed: "60 sn",
-    vram: "12 GB",
+    speed: "3-5 dk (Yerel CPU) / 60 sn (Bulut)",
+    vram: "12 GB (RAM)",
     polyType: "🔺 Üçgen (SDF Kapalı)",
     texture: "🖼️ 1024x1024 Albedo",
-    desc: "SDF hacimsel modeli çıkarır, 3D yazıcı üretimi için en ideal kapalı geometri."
+    desc: "3D yazıcı üretimi için en ideal kapalı geometri."
   }
 };
 
@@ -97,7 +97,7 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
   // Akış ve Poligon Seçenekleri
   const [flowMode, setFlowMode] = useState("manual"); // "manual" veya "auto"
   const [polygonType, setPolygonType] = useState("triangle"); // "triangle" veya "quad"
-  
+
   // Tab ve Girişler
   const [activeSubTab, setActiveSubTab] = useState("upload");
   const [prompt, setPrompt] = useState("");
@@ -108,7 +108,7 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
   const [customTargetFaces, setCustomTargetFaces] = useState(5000);
   const [optimizationType, setOptimizationType] = useState("ratio"); // "ratio" veya "faces"
 
-  
+
   // Seçilen her motorun kendi özel konfigürasyonu
   const [engineConfigs, setEngineConfigs] = useState({
     triposr: {
@@ -167,29 +167,35 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
   const [activeInfoTooltip, setActiveInfoTooltip] = useState(null);
 
   const getHardwareUsageText = (key) => {
+    const executionMode = typeof window !== "undefined" ? (localStorage.getItem("glb_execution_mode") || "local") : "local";
+    
+    if (executionMode === "cloud") {
+      return "Bulut (Replicate) modunda çalışır. Bilgisayarınızın donanımı kullanılmaz. İşlemler Replicate bulut sunucuları üzerinden A100 GPU'lar ile tamamlanır. Replicate API Token gerektirir.";
+    }
+
     switch (key) {
       case "triposr":
-        return "GPU (VRAM - ~4-6 GB) kullanır. Ekran kartınızda saniyeler içinde doğrudan ve hızlı çalışır.";
-      case "sf3d":
-        return "GPU (VRAM - ~6 GB) kullanır. Sınırda yerel ekran kartı belleğiyle en kaliteli dokulu çıktıyı hızlıca üretir.";
-      case "dreamgaussian":
-        return "GPU (VRAM - ~6 GB) kullanır. Hızlı yerel model üretimidir.";
-      case "crm":
-        return "GPU (VRAM - ~6-8 GB) kullanır. Kartınızın sınırlarında düşük bellek (Low-VRAM) moduyla çalışır.";
-      case "lgm":
-        return "CPU (Sistem RAM - ~12 GB) kullanır. Ekran kartı yetmediğinde CPU offload ile işlemci üzerinden yavaşça işlenir.";
-      case "instantmesh":
-        return "CPU (Sistem RAM - ~16 GB) kullanır. 6 GB VRAM yetmediği için işlemciye (CPU) aktarılır; 5-8 dk sürer ama bilgisayarı çökertmeden yerelde temiz geometri üretir.";
-      case "trellis":
-        return "Yerel işlemci (CPU) ve Sistem RAM'inizi kullanır. Çok ağır bir modeldir, 16 GB sistem RAM sınırınızı tamamen zorlar ve üretimi yerelde tamamlaması 10-15 dakika sürebilir.";
+        return "Yerel GPU (GTX 1660 VRAM - ~4-6 GB) kullanır. Bilgisayarınızda tamamen ücretsiz, internetsiz ve saniyeler içinde çalışır.";
       case "hunyuan3d":
-        return "Yerel işlemci (CPU) ve Sistem RAM'inizi kullanır. Ağırlıkları çok büyüktür, yerelde RAM yetmezliği nedeniyle yavaşlama veya donma riski taşır.";
+        return "Yerel CPU (Sistem RAM - ~16 GB) kullanır. Model ağırlıkları 15 GB'tır. GTX 1660 VRAM'i yetersiz olduğundan CPU üzerinde çalışır, bilgisayarınızda Hunyuan3D kodlarının kurulu olmasını gerektirir ve işlem 15-25 dakika sürer.";
+      case "trellis":
+        return "Yerel CPU (Sistem RAM - ~16 GB) kullanır. Çok ağır bir modeldir. Bilgisayarınızda TRELLIS kodlarının kurulmasını gerektirir, CPU üzerinde 15-20 dakika sürer.";
+      case "instantmesh":
+        return "Yerel CPU (Sistem RAM - ~16 GB) kullanır. Bilgisayarınızda yerel kütüphanelerin kurulmasını gerektirir, CPU üzerinde çalışması 5-10 dakika sürer.";
+      case "sf3d":
+        return "Yerel CPU veya GPU (Bellek sınırında). VRAM yetmezse CPU offload ile işlemci üzerinden yavaşça (1-2 dakika) çalışır.";
+      case "dreamgaussian":
+        return "Yerel CPU veya GPU. Yerelde çalışması için ilgili yerel modüllerin kurulumunu gerektirir.";
+      case "crm":
+        return "Yerel GPU/CPU. 6-8 GB VRAM sınırında çalışır.";
+      case "lgm":
+        return "Yerel CPU (Sistem RAM). Yerel python ortamında çalıştırılması 2-4 dakika sürer.";
       case "unique3d":
-        return "Yerel işlemci (CPU) ve Sistem RAM'inizi kullanır. Detaylı yapısı nedeniyle yerel CPU modunda üretimi 15 dakikaya kadar sürebilir.";
+        return "Yerel CPU. Detaylı yapısı nedeniyle yerel işlemci üzerinde çalışması 15-25 dakika sürebilir.";
       case "one2345":
-        return "CPU (Sistem RAM - ~12 GB) modunda çalışabilir. 3D yazıcı odaklı geometri çıkartır.";
+        return "Yerel CPU (Sistem RAM). 3D yazıcı odaklı geometri çıkarır, yerelde 3-5 dakika sürer.";
       default:
-        return "GPU (VRAM) veya CPU (Sistem RAM) kullanır.";
+        return "Yerel donanımınızı kullanır.";
     }
   };
 
@@ -248,8 +254,8 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
         <div className={styles.engineConfigHeader}>
           <span>⚙️ {info.name}</span>
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            <span 
-              className={styles.infoIcon} 
+            <span
+              className={styles.infoIcon}
               onClick={() => setActiveInfoTooltip(activeInfoTooltip === key ? null : key)}
               title="Donanım Kullanım Bilgisi"
               style={{ cursor: "pointer" }}
@@ -548,17 +554,17 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
       </div>
     );
   };
-  
+
   // Görsel ve 3D Durumları
   const [selectedExample, setSelectedExample] = useState(null);
   const [uploadedImageBase64, setUploadedImageBase64] = useState("");
   const [removedBgImage, setRemovedBgImage] = useState("");
   const [generatedGlbUrl, setGeneratedGlbUrl] = useState("");
   const [generatedGlbSize, setGeneratedGlbSize] = useState(0);
-  
+
   // Adım Adım İşlem Aşamaları
   const [currentStep, setCurrentStep] = useState(0);
-  
+
   // Durum, Log ve İlerleme Çubuğu
   const [status, setStatus] = useState("");
   const [logs, setLogs] = useState("");
@@ -577,24 +583,24 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
   const startProgress = (durationSeconds) => {
     setProgress(1);
     setCountdown(durationSeconds);
-    
+
     if (window.progressInterval) clearInterval(window.progressInterval);
-    
+
     const startTime = Date.now();
     const endTime = startTime + durationSeconds * 1000;
-    
+
     window.progressInterval = setInterval(() => {
       const now = Date.now();
       const elapsed = now - startTime;
       const total = durationSeconds * 1000;
-      
+
       const remainingSeconds = Math.max(0, Math.ceil((endTime - now) / 1000));
       setCountdown(remainingSeconds);
-      
+
       // Erken dolup kilitlenmiş hissi vermemesi için %95'te sınırla
       const currentProgress = Math.min(95, (elapsed / total) * 100);
       setProgress(currentProgress);
-      
+
       if (now >= endTime) {
         clearInterval(window.progressInterval);
       }
@@ -629,7 +635,7 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
     setCurrentStep(0);
     onModelLoaded("", 0, "", "triposr");
     onModelLoaded("", 0, "", "instantmesh");
-    
+
     const reader = new FileReader();
     reader.onloadend = () => {
       setUploadedImageBase64(reader.result);
@@ -665,12 +671,12 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, aspect_ratio: aspectRatio })
       });
-      
+
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Görsel üretilemedi.");
-      
+
       const imageUrl = data.image;
-      
+
       setUploadedImageBase64(imageUrl);
       setSelectedExample(null);
       setRemovedBgImage("");
@@ -679,7 +685,7 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
       setCurrentStep(0);
       setStatus("Görsel başarıyla üretildi!");
       stopProgress();
-      
+
       if (flowMode === "auto") {
         setTimeout(() => runBackgroundRemoval(imageUrl), 800);
       }
@@ -698,7 +704,7 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
   const handleBgRemovalTrigger = async () => {
     const sourceImage = selectedExample ? selectedExample.path : uploadedImageBase64;
     if (!sourceImage) return;
-    
+
     setIsLoading(true);
     await runBackgroundRemoval(sourceImage);
   };
@@ -729,15 +735,15 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: imageSrc })
       });
-      
+
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Arka plan silme başarısız.");
-      
+
       setRemovedBgImage(data.image);
       setCurrentStep(1);
       setStatus("Arka plan silindi! 3D modele dönüştürebilirsiniz.");
       stopProgress();
-      
+
       if (flowMode === "auto") {
         run3DGeneration(data.image);
       }
@@ -806,13 +812,13 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
         const response = await fetch(`${localUrl}/api/generate-3d`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            image: imageSrc, 
+          body: JSON.stringify({
+            image: imageSrc,
             model: engineKey,
             params: engineConfigs[engineKey]
           })
         });
-        
+
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || `${engineName} üretilemedi.`);
 
@@ -821,7 +827,7 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
         const glbUrl = URL.createObjectURL(glbBlob);
 
         onModelLoaded(glbUrl, glbBlob.size, refImage, engineKey);
-        
+
         finalBlob = glbBlob;
         finalUrl = glbUrl;
       } catch (err) {
@@ -940,7 +946,7 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
           <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", maxWidth: "90%", textAlign: "center", marginBottom: "0.25rem" }}>
             {logs}
           </div>
-          
+
           {/* İlerleme Çubuğu Arayüzü */}
           {progress > 0 && (
             <>
@@ -1080,7 +1086,7 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
                     <img src={selectedExample ? selectedExample.path : uploadedImageBase64} alt="Görsel" />
                     <div className={styles.imageLabel}>Giriş Görseli</div>
                   </div>
-                  
+
                   {flowMode === "manual" && (
                     <button
                       className="btn btn-primary"
@@ -1163,7 +1169,7 @@ export default function GeneratorPanel({ onModelLoaded, onStartGeneration, selec
       {currentStep === 2 && (
         <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "0.8rem", textAlign: "left" }}>
           <h4 style={{ fontSize: "0.95rem", fontWeight: 600, color: "#ffffff", margin: 0 }}>Ham 3D Model Hazır</h4>
-          
+
           <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: "0.1rem 0" }}>
             Boyut: <strong style={{ color: "var(--accent-cyan)" }}>{(generatedGlbSize / 1024 / 1024).toFixed(2)} MB</strong>
           </div>

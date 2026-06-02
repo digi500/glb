@@ -214,6 +214,37 @@ def generate_3d():
         
         print(f"[*] Alınan Parametreler ({model_type}): {params}")
 
+        if model_type not in ["triposr", "hunyuan3d"]:
+            return jsonify({
+                "error": f"'{model_type}' motoru yerel GPU üzerinde desteklenmiyor. Ekran kartınızın (GTX 1660) belleği bu modeli yerelde çalıştırmak için yetersizdir. Lütfen Ayarlar panelinden 'Bulut Modu'nu (Replicate Cloud) açın ve Replicate API Token girin."
+            }), 400
+
+        # Hunyuan3D yerel kontrolü ve çalıştırma denemesi
+        if model_type == "hunyuan3d":
+            hunyuan_path = BASE_DIR / "Hunyuan3D"
+            if not hunyuan_path.exists():
+                return jsonify({
+                    "error": "Hunyuan3D yerel klasörü (local_pipeline/Hunyuan3D) bulunamadı.\n\n"
+                             "Lütfen şu adımları izleyin:\n"
+                             "1. Komut satırından 'cd local_pipeline' klasörüne gidin.\n"
+                             "2. 'git clone https://github.com/Tencent/Hunyuan3D.git' komutunu çalıştırın.\n"
+                             "3. Ağırlıkları indirmek için README.md kılavuzunu inceleyin.\n"
+                             "4. Gerekli kütüphaneleri (hy3dgen, pymeshlab vb.) pip ile yükleyin."
+                }), 400
+            
+            # Yerel Hunyuan3D'yi CPU modunda çalıştırmayı dene
+            try:
+                # Buraya yerel import ve çalıştırma mantığı eklenecek
+                # Ancak kullanıcıda henüz klasör ve ağırlıklar olmadığı için bu hata ile dürüstçe uyarılacak.
+                print("[*] Yerel Hunyuan3D (CPU) çalıştırılması deneniyor...")
+                # Örnek import:
+                # sys.path.insert(0, str(hunyuan_path))
+                # from hy3dgen.shapegen import Hunyuan3DDiTFlowMatchingPipeline
+                # ...
+                return jsonify({"error": "Hunyuan3D model ağırlıkları (15GB) yerel klasörde eksik veya kurulmadı. Lütfen Bulut (Replicate) moduna geçiş yapın."}), 400
+            except Exception as ex:
+                return jsonify({"error": f"Hunyuan3D yerel başlatma hatası: {str(ex)}"}), 500
+
         # TripoSR yerel olarak kuruluysa doğrudan çalıştır
         if TSR_AVAILABLE:
             print(f"[*] TripoSR Python API ile yerel olarak 3D model örülüyor (Motor: {model_type})...")

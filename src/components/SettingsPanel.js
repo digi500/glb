@@ -19,10 +19,10 @@ export default function SettingsPanel({ isOpen, onClose }) {
     e.preventDefault();
     if (typeof window !== "undefined") {
       localStorage.setItem("glb_local_server_url", localServerUrl.trim());
-      
+
       // Notify other components of the change
       window.dispatchEvent(new Event("glb_settings_updated"));
-      
+
       setIsSaved(true);
       setTimeout(() => {
         setIsSaved(false);
@@ -42,7 +42,7 @@ export default function SettingsPanel({ isOpen, onClose }) {
         </div>
 
         <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          
+
           <div className="input-group">
             <label className="input-label" htmlFor="local_server_url">
               Yerel Sunucu Adresi (Local Host)

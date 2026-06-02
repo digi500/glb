@@ -131,6 +131,11 @@ export default function Home() {
   }, []);
 
   const handleModelLoaded = (url, size, refImage, modelType = "triposr", error = "") => {
+    if (intervalsRef.current[modelType]) {
+      clearInterval(intervalsRef.current[modelType]);
+      delete intervalsRef.current[modelType];
+    }
+
     setModelsState((prev) => ({
       ...prev,
       [modelType]: { url, size, loading: false, error }
@@ -141,10 +146,28 @@ export default function Home() {
   };
 
   const handleStartGeneration = (modelType) => {
+    if (intervalsRef.current[modelType]) {
+      clearInterval(intervalsRef.current[modelType]);
+    }
+
+    setElapsedTimes((prev) => ({ ...prev, [modelType]: 0 }));
+    setCountdowns((prev) => ({ ...prev, [modelType]: ESTIMATED_TIMES[modelType] || 60 }));
+
     setModelsState((prev) => ({
       ...prev,
       [modelType]: { url: "", size: 0, loading: true, error: "" }
     }));
+
+    const startTime = Date.now();
+    const estDuration = ESTIMATED_TIMES[modelType] || 60;
+
+    intervalsRef.current[modelType] = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, estDuration - elapsed);
+
+      setElapsedTimes((prev) => ({ ...prev, [modelType]: elapsed }));
+      setCountdowns((prev) => ({ ...prev, [modelType]: remaining }));
+    }, 1000);
   };
 
   const handleToggleEngine = (key) => {
@@ -197,7 +220,7 @@ export default function Home() {
         </div>
 
         <div className={styles.navActions}>
-          <button 
+          <button
             className="btn btn-secondary"
             onClick={() => setIsSettingsOpen(true)}
           >
@@ -232,9 +255,9 @@ export default function Home() {
       <div className={styles.mainLayout}>
         {/* Left Side Controls */}
         {activeTab === "generator" ? (
-          <GeneratorPanel 
-            onModelLoaded={handleModelLoaded} 
-            onStartGeneration={handleStartGeneration} 
+          <GeneratorPanel
+            onModelLoaded={handleModelLoaded}
+            onStartGeneration={handleStartGeneration}
             selectedEngines={selectedEngines}
             onToggleEngine={handleToggleEngine}
           />
@@ -247,8 +270,8 @@ export default function Home() {
           <div className={styles.sectionTitle}>
             🖥️ {activeTab === "generator" ? "3D Model Karşılaştırma Stüdyosu" : "3D Model Önizleme"}
             {activeTab === "optimizer" && modelsState.triposr.url && (
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 onClick={() => triggerDownload(modelsState.triposr.url, "optimized_model.glb")}
                 style={{ marginLeft: "auto", padding: "0.4rem 1rem", fontSize: "0.85rem" }}
               >
@@ -265,13 +288,13 @@ export default function Home() {
                   {selectedEngines.map((modelKey) => {
                     const model = modelsState[modelKey];
                     const engineInfo = ENGINES[modelKey];
-                    
+
                     return (
                       <div key={modelKey} className={styles.previewColumn}>
                         {/* Başlık çubuğu */}
                         <div className={styles.previewHeader}>
                           <span>{engineInfo.name}</span>
-                          <button 
+                          <button
                             className="btn btn-secondary"
                             onClick={() => setVisibleSpecs(prev => ({ ...prev, [modelKey]: !prev[modelKey] }))}
                             style={{ marginLeft: "auto", padding: "0.2rem 0.5rem", fontSize: "0.7rem", height: "24px", marginRight: "0.3rem" }}
@@ -279,7 +302,7 @@ export default function Home() {
                             ℹ️ {visibleSpecs[modelKey] ? "Gizle" : "Özellikler"}
                           </button>
                           {model.url && (
-                            <button 
+                            <button
                               className="btn btn-secondary"
                               onClick={() => triggerDownload(model.url, `${modelKey}_model.glb`)}
                               style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem", height: "24px" }}
@@ -317,7 +340,13 @@ export default function Home() {
                           {model.loading ? (
                             <div className={styles.previewPlaceholder}>
                               <div className="spinner"></div>
-                              <div>{engineInfo.name} üretiliyor...</div>
+                              <div style={{ fontWeight: 600 }}>{engineInfo.name} üretiliyor...</div>
+                              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>
+                                Geçen Süre: {elapsedTimes[modelKey] || 0} sn
+                              </div>
+                              <div style={{ fontSize: "0.8rem", color: "var(--accent-purple)", marginTop: "0.2rem" }}>
+                                Tahmini Kalan: {countdowns[modelKey] || 0} sn
+                              </div>
                             </div>
                           ) : model.error ? (
                             <div className={styles.previewPlaceholderError}>
@@ -362,9 +391,9 @@ export default function Home() {
       </div>
 
       {/* Settings Modal Component */}
-      <SettingsPanel 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
+      <SettingsPanel
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
       />
 
       {/* Footer */}
